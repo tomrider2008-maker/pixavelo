@@ -30,7 +30,8 @@ permissions declared by their jobs.
 
 Dependabot checks npm and pinned GitHub Actions weekly on Monday. TypeScript major versions `>=6.0.0` are temporarily
 ignored because the current `typescript-eslint` peer range is `<6.1.0`; this prevents Dependabot from proposing an
-uninstallable TypeScript 7 dependency set. Revisit the guard when the lint toolchain supports a newer compiler.
+uninstallable TypeScript 7 dependency set. jsdom major updates are also deferred because jsdom 30 drops the Node 20
+runtime still declared by Pixavelo. Revisit both guards with the corresponding toolchain/runtime migrations.
 
 ## Protected production environment
 

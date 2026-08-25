@@ -20,6 +20,10 @@ updates:
       - dependency-name: 'typescript'
         versions:
           - '>=6.0.0'
+      # jsdom 30 drops the Node 20 runtime still supported by this repository.
+      - dependency-name: 'jsdom'
+        update-types:
+          - 'version-update:semver-major'
     versioning-strategy: increase
 
   - package-ecosystem: 'github-actions'
