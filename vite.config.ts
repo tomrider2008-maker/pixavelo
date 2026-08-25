@@ -1,0 +1,114 @@
+import react from '@vitejs/plugin-react';
+import { VitePWA } from 'vite-plugin-pwa';
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  plugins: [
+    react(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['favicon.svg', 'icons/pixavelo.svg'],
+      manifest: {
+        name: 'Pixavelo — Private Image Processing Studio',
+        short_name: 'Pixavelo',
+        description:
+          'Convert, optimize, resize, batch-process, edit, privacy-clean and generate web assets locally in your browser.',
+        theme_color: '#ffffff',
+        background_color: '#ffffff',
+        display: 'standalone',
+        orientation: 'any',
+        start_url: '/',
+        scope: '/',
+        icons: [
+          {
+            src: '/icons/pixavelo.svg',
+            sizes: 'any',
+            type: 'image/svg+xml',
+            purpose: 'any'
+          },
+          {
+            src: '/icons/pixavelo-maskable.svg',
+            sizes: 'any',
+            type: 'image/svg+xml',
+            purpose: 'maskable'
+          }
+        ]
+      },
+      workbox: {
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
+        navigateFallback: '/index.html',
+        globPatterns: ['**/*.{js,css,html,svg,woff2}'],
+        globIgnores: [
+          '**/avif-*.js',
+          '**/avif_enc*.js',
+          '**/encode-*.js',
+          '**/avifCodec-*.js',
+          '**/avifDecoder-*.js',
+          '**/decode-*.js',
+          '**/heic-*.js',
+          '**/heifCodec-*.js',
+          '**/heifDecoder-*.js',
+          '**/tiffCodec-*.js',
+          '**/tiffDecoder-*.js'
+        ],
+        runtimeCaching: [
+          {
+            urlPattern: /\/assets\/(?:avif|decode|heic|heif|tiff)[^/]*\.(?:js|wasm)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'pixavelo-codecs-v1',
+              expiration: { maxEntries: 8, maxAgeSeconds: 365 * 24 * 60 * 60 },
+              cacheableResponse: { statuses: [200] }
+            }
+          }
+        ]
+      }
+    })
+  ],
+  build: {
+    target: 'es2022',
+    sourcemap: false,
+    chunkSizeWarningLimit: 650
+  },
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/tests/setup.ts'],
+    exclude: ['e2e/**', 'live-e2e/**', 'node_modules/**', 'dist/**'],
+    pool: 'forks',
+    maxWorkers: 1,
+    css: true,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      include: [
+        'src/components/ui/Dialog.tsx',
+        'src/engine/export/createZip.ts',
+        'src/features/resize/cropMath.ts',
+        'src/features/converter/naming.ts',
+        'src/features/converter/presets.ts',
+        'src/features/batch/recipe.ts',
+        'src/features/batch/statistics.ts',
+        'src/features/batch/virtualWindow.ts',
+        'src/features/editor/history.ts',
+        'src/features/editor/recipe.ts',
+        'src/engine/errors/**/*.ts',
+        'src/engine/memory/**/*.ts',
+        'src/engine/pipeline/encodeToTarget.ts',
+        'src/engine/pipeline/geometry.ts',
+        'src/engine/pipeline/imageAdjustments.ts',
+        'src/engine/registry/**/*.ts',
+        'src/engine/validation/**/*.ts',
+        'src/services/intakeSession.ts',
+        'src/utils/**/*.ts'
+      ],
+      thresholds: {
+        statements: 65,
+        branches: 50,
+        functions: 60,
+        lines: 65
+      }
+    }
+  }
+});

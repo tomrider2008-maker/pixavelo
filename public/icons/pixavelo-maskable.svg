@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Pixavelo">
+  <rect width="512" height="512" fill="#1746ed"/>
+  <path fill="#fff" d="M144 96h152c77 0 128 47 128 120s-51 120-128 120h-64v88h-88V96Zm88 80v80h64c27 0 40-13 40-40s-13-40-40-40h-64Z"/>
+</svg>
