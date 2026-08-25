@@ -24,3 +24,6 @@
 
 /manifest.webmanifest
   Cache-Control: no-cache
+
+/release.json
+  Cache-Control: no-cache, no-store, must-revalidate

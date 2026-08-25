@@ -107,6 +107,17 @@ fallback yields before work, applies the same pixel limits, checks cancellation 
 `ImageBitmap`, probes the requested encoder and decodes the output again before exposing a download. It never sends
 image data across a network boundary.
 
+## Release and operations boundary
+
+Every build emits a small `release.json` asset containing stable semantic version, full Git revision, commit time and
+clean-tree state. It contains no user, machine, token or image information and is served with `no-store` so deployment
+verification cannot accept stale provenance. Hashed application assets remain immutable.
+
+Production deployment refuses working-tree changes, retains a CycloneDX production SBOM and SHA-256 file inventory,
+then validates the canonical Pages alias. Hourly synthetic checks observe only public static delivery. Daily browser
+checks use generated fixtures and assert that local processing emits no write or cross-origin image requests. Rollback
+targets an existing successful immutable production deployment; it never mutates an artifact in place.
+
 ## Transform and compression model
 
 Crop coordinates are normalized against decoded source pixels before one of ten resize methods resolves requested

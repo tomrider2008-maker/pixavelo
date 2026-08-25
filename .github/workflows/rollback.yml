@@ -1,0 +1,48 @@
+name: Production rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      deployment_id:
+        description: Successful production deployment UUID to restore
+        required: true
+      expected_revision:
+        description: Git revision published by the target deployment
+        required: true
+      confirmation:
+        description: Type ROLLBACK to change production
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-release
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    if: inputs.confirmation == 'ROLLBACK'
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      TARGET_DEPLOYMENT_ID: ${{ inputs.deployment_id }}
+      TARGET_REVISION: ${{ inputs.expected_revision }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+      - run: npm run rollback:pages -- --deployment "$TARGET_DEPLOYMENT_ID" --expected-revision "$TARGET_REVISION" --confirm ROLLBACK
+      - if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: production-rollback-${{ github.run_id }}
+          path: .artifacts/operations/
+          if-no-files-found: warn
+          retention-days: 90

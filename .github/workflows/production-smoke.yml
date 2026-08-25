@@ -1,17 +1,56 @@
-name: Production smoke
+name: Production operations
 
 on:
   workflow_dispatch:
+    inputs:
+      target_url:
+        description: HTTPS deployment to verify
+        required: false
+        default: https://pixavelo.pages.dev
+      expected_revision:
+        description: Expected Git revision; defaults to the workflow revision
+        required: false
   schedule:
-    - cron: '15 3 * * 1-5'
+    - cron: '17 * * * *'
+    - cron: '15 3 * * *'
 
 permissions:
   contents: read
 
+concurrency:
+  group: production-operations
+  cancel-in-progress: false
+
 jobs:
+  availability-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      PIXAVELO_BASE_URL: ${{ inputs.target_url || 'https://pixavelo.pages.dev' }}
+      PIXAVELO_EXPECTED_REVISION: ${{ inputs.expected_revision || github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+      - run: npm run verify:deployment
+      - if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: production-probe-failure-${{ github.run_id }}
+          path: .artifacts/operations/
+          if-no-files-found: error
+          retention-days: 30
+
   live-browser-matrix:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '15 3 * * *'
+    needs: availability-probe
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      PIXAVELO_BASE_URL: ${{ inputs.target_url || 'https://pixavelo.pages.dev' }}
     strategy:
       fail-fast: false
       matrix:
@@ -27,11 +66,22 @@ jobs:
           - project: mobile-webkit
             browser: webkit
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps ${{ matrix.browser }}
       - run: npm run test:live -- --project=${{ matrix.project }}
+      - if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: production-browser-failure-${{ matrix.project }}-${{ github.run_id }}
+          path: |
+            playwright-live-report/
+            test-results-live/
+          if-no-files-found: ignore
+          retention-days: 30

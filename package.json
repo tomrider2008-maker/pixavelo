@@ -1,7 +1,7 @@
 {
   "name": "pixavelo",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "engines": {
     "node": ">=20.19.0"
@@ -23,9 +23,15 @@
     "test:live": "playwright test --config=playwright.live.config.ts",
     "audit:production": "npm audit --omit=dev --audit-level=high",
     "audit:hardening": "node scripts/hardening-audit.mjs",
-    "release:check": "npm run check && npm run audit:hardening && npm run audit:production && npm run test:e2e",
-    "predeploy:pages": "npm run release:check",
-    "deploy:pages": "wrangler pages deploy dist --project-name pixavelo --branch main --commit-dirty=true",
+    "audit:operations": "node scripts/operational-audit.mjs",
+    "release:artifacts": "node scripts/create-release-evidence.mjs",
+    "release:clean": "node scripts/assert-clean-release.mjs",
+    "release:check": "npm run check && npm run audit:hardening && npm run audit:operations && npm run audit:production && npm run test:e2e",
+    "verify:deployment": "node scripts/verify-deployment.mjs",
+    "rollback:pages": "node scripts/rollback-pages.mjs",
+    "predeploy:pages": "npm run release:clean && npm run release:check && npm run release:artifacts",
+    "deploy:pages": "wrangler pages deploy dist --project-name pixavelo --branch main --commit-dirty=false",
+    "postdeploy:pages": "npm run verify:deployment",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run build"
   },
   "dependencies": {

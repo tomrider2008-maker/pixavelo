@@ -110,6 +110,20 @@ test('production shell, deep routes, manifest and security policy are healthy', 
   const manifest = (await manifestResponse.json()) as { name?: unknown };
   expect(manifest.name).toBe('Pixavelo — Private Image Processing Studio');
 
+  const releaseResponse = await request.get('/release.json');
+  expect(releaseResponse.status()).toBe(200);
+  expect(releaseResponse.headers()['cache-control']).toContain('no-store');
+  const release = (await releaseResponse.json()) as {
+    dirty?: unknown;
+    revision?: unknown;
+    schemaVersion?: unknown;
+    version?: unknown;
+  };
+  expect(release.schemaVersion).toBe(1);
+  expect(release.version).toMatch(/^\d+\.\d+\.\d+$/);
+  expect(release.revision).toMatch(/^[a-f0-9]{40}$/);
+  expect(release.dirty).toBe(false);
+
   const privacyResponse = await page.goto('/privacy');
   expect(privacyResponse?.status()).toBe(200);
   await expect(page.getByRole('heading', { name: 'Metadata & Privacy' })).toBeVisible();

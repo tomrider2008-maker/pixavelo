@@ -1,10 +1,52 @@
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { defineConfig } from 'vitest/config';
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+
+const packageManifest = JSON.parse(
+  readFileSync(new URL('./package.json', import.meta.url), 'utf8')
+) as { name: string; version: string };
+
+function gitOutput(args: readonly string[]) {
+  try {
+    return execFileSync('git', args, {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore']
+    }).trim();
+  } catch {
+    return '';
+  }
+}
+
+const releaseRevision =
+  process.env.CF_PAGES_COMMIT_SHA ?? process.env.GITHUB_SHA ?? gitOutput(['rev-parse', 'HEAD']);
+const releaseBuiltAt =
+  process.env.SOURCE_DATE_EPOCH !== undefined
+    ? new Date(Number(process.env.SOURCE_DATE_EPOCH) * 1000).toISOString()
+    : gitOutput(['show', '-s', '--format=%cI', 'HEAD']) || new Date(0).toISOString();
+const releaseMetadata = {
+  schemaVersion: 1,
+  application: packageManifest.name,
+  version: packageManifest.version,
+  revision: releaseRevision || 'unknown',
+  builtAt: releaseBuiltAt,
+  dirty: gitOutput(['status', '--porcelain', '--untracked-files=all']).length > 0
+};
 
 export default defineConfig({
   plugins: [
     react(),
+    {
+      name: 'pixavelo-release-metadata',
+      generateBundle() {
+        this.emitFile({
+          type: 'asset',
+          fileName: 'release.json',
+          source: `${JSON.stringify(releaseMetadata, null, 2)}\n`
+        });
+      }
+    },
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/pixavelo.svg'],

@@ -8,7 +8,7 @@ Pixavelo is a static React application for local browser image processing. The c
 production foundation, a verified native core for JPEG/PNG/WebP conversion, the Phase 3 Universal Converter,
 Phase 4 advanced-format imports, the enterprise Phase 5 compression/resize workspaces, Phase 6 Batch Studio and the
 Phase 7 non-destructive Image Editor, Phase 8 Metadata & Privacy, Phase 9 Web Asset Studio, Phase 10 Professional
-Utilities and Phase 11 release hardening.
+Utilities, Phase 11 release hardening and Phase 12 production operations.
 
 ## What is implemented
 
@@ -74,6 +74,10 @@ Utilities and Phase 11 release hardening.
 - Automated 120-file real-processing stress coverage, 200+ item virtualization, corrupt-file isolation, 320–1920 px
   responsive checks, static security/network checks, production dependency audit and codec/startup bundle budgets.
 - Scheduled production smoke checks for the application shell, security policy and local conversion boundary.
+- Immutable semantic-version/Git release provenance, clean-tree deployment refusal, CycloneDX SBOMs and SHA-256
+  deployment evidence.
+- Hourly production availability verification, daily five-project browser checks, guarded rollback automation,
+  operational SLOs, incident handling and physical-device sign-off criteria.
 
 ## Local development
 
@@ -95,14 +99,19 @@ npm run build
 npx playwright install chromium
 npm run test:e2e
 npm run audit:hardening
+npm run audit:operations
 npm run test:live
 npm run audit:production
 npm run release:check
+npm run release:artifacts
+npm run verify:deployment
 ```
 
 `npm run check` runs formatting, lint, TypeScript, coverage-enforced unit/component tests and the production build.
 `npm run test:e2e` builds once and exercises the production artifact in desktop and mobile Chromium, Firefox and
 WebKit projects. `npm run test:live` targets <https://pixavelo.pages.dev> unless `PIXAVELO_BASE_URL` overrides it.
+`npm run verify:deployment` performs the lightweight production SLO probe and verifies that the live Git revision
+matches the current checkout unless `PIXAVELO_EXPECTED_REVISION` overrides it.
 
 ## Cloudflare Pages
 
@@ -117,7 +126,8 @@ The `public/_redirects` file sends deep routes to `index.html`. `public/_headers
 referrer, permissions, frame, HTTPS and cache policies. There are no Pages Functions or image Workers.
 
 `npm run release:check` adds the production dependency audit and full browser/device matrix. `npm run deploy:pages`
-runs that complete release gate before publishing the verified `dist` directory.
+runs that complete release gate from a clean tree, records release evidence, publishes the verified `dist` directory
+and verifies the canonical deployment. It no longer permits `--commit-dirty=true`.
 
 ## Documentation
 
@@ -128,6 +138,11 @@ runs that complete release gate before publishing the verified `dist` directory.
 - [Security policy](SECURITY.md)
 - [Production readiness and release process](docs/PRODUCTION_READINESS.md)
 - [Phase 11 hardening evidence](docs/PHASE_11_HARDENING.md)
+- [Production SLOs](docs/SLO.md)
+- [Operations and rollback runbook](docs/OPERATIONS.md)
+- [Physical-device QA matrix](docs/PHYSICAL_DEVICE_QA.md)
+- [Phase 12 operations evidence](docs/PHASE_12_OPERATIONS.md)
+- [Changelog](CHANGELOG.md)
 
 ## Design references
 

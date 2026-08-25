@@ -73,6 +73,13 @@ real-processing stress pass, corrupt-file isolation, hardening-route smoke check
 Chromium and Firefox additionally verify offline deep navigation; WebKit verifies populated
 application caches because Playwright's WebKit network emulation cannot reliably navigate while offline.
 
+Phase 12 additionally removes every service-worker registration and application cache in Chromium, reloads the
+online shell, verifies a new worker takes control, then proves offline deep-route recovery without write or
+cross-origin requests. Release provenance is intentionally excluded from the PWA cache so monitors observe the live
+deployment revision.
+
 The scheduled live suite repeats shell, deep-route, manifest, security-header, local-conversion, non-destructive
 editor export and verified metadata-location removal checks against `pixavelo.pages.dev`. Playwright WebKit is a
 compatibility signal, not a substitute for a physical current-version Safari/iOS Safari release check.
+The Phase 12 operations workflow runs a lightweight endpoint/provenance probe hourly and this five-project browser
+matrix daily. Physical sign-off remains recorded separately in `docs/PHYSICAL_DEVICE_QA.md`.

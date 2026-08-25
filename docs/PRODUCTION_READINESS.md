@@ -40,6 +40,10 @@ A release is eligible for deployment only when all of the following pass:
 17. Static hardening audit for unsafe DOM/eval/network clients, CSP and Pages controls, source maps, codec isolation and
     PWA artifacts; collection, retained-output, metadata, frame and archive memory budgets have focused unit tests.
 18. Live HTTPS, deep-route, browser-console, security-header and Phase 8–11 local-processing smoke checks.
+19. Phase 12 clean-tree enforcement, immutable release provenance, CycloneDX SBOM, file-digest evidence and pinned
+    CI actions.
+20. Hourly endpoint/SLO verification, daily production browser coverage, service-worker recovery and guarded rollback
+    automation.
 
 ## Release procedure
 
@@ -49,18 +53,23 @@ npm run check
 npm run audit:hardening
 npm run audit:production
 npm run test:e2e
+npm run release:artifacts
 npm run deploy:pages
+npm run verify:deployment
 npm run test:live
 ```
 
-`npm run deploy:pages` uses Cloudflare Pages Direct Upload for the `pixavelo` project. CI deployment should use a
-least-privilege Cloudflare API token stored in repository secrets; OAuth credentials must not be committed.
+`npm run deploy:pages` uses Cloudflare Pages Direct Upload for the `pixavelo` project, refuses a dirty working tree,
+repeats all gates and verifies the canonical deployment afterward. CI deployment should use a least-privilege
+Cloudflare API token stored in a protected environment; OAuth credentials must not be committed. Retain the generated
+SBOM and release-evidence digest with the immutable deployment UUID.
 
 ## Rollback
 
-Cloudflare retains immutable deployment versions. If the live smoke suite fails after publication, promote the last
-known-good production deployment in the Pages dashboard, then record the failing check and deployment identifier.
-Do not attempt to repair a broken production release in place.
+Cloudflare retains immutable deployment versions. If the live smoke suite fails after publication, run the guarded
+rollback workflow/command or promote the last known-good production deployment in the Pages dashboard, then verify
+its `/release.json` revision and repeat the live suite. Do not attempt to repair a broken production release in place.
+See `docs/OPERATIONS.md` for the exact command and incident procedure.
 
 ## Operational boundaries
 
@@ -70,3 +79,5 @@ Do not attempt to repair a broken production release in place.
 - Browser automation does not replace the physical Safari/iOS Safari and Android Chrome release checklist.
 - Advanced formats are import-only. First-frame/page/primary-image boundaries are product behavior, not temporary
   omissions, and must remain disclosed until multi-frame/page export is implemented.
+- Scheduled workflows require a GitHub-hosted repository with Actions enabled. The 30-day SLO and physical-device
+  rows remain pending until their external evidence windows are completed.

@@ -14,7 +14,14 @@ async function requireFile(path) {
   }
 }
 
-for (const path of ['index.html', 'manifest.webmanifest', 'sw.js', '_headers', '_redirects']) {
+for (const path of [
+  'index.html',
+  'manifest.webmanifest',
+  'release.json',
+  'sw.js',
+  '_headers',
+  '_redirects'
+]) {
   await requireFile(path);
 }
 
@@ -99,6 +106,29 @@ if (manifest.display !== 'standalone' || manifest.start_url !== '/' || manifest.
 }
 if (!manifest.icons?.some((icon) => icon.purpose === 'maskable')) {
   failures.push('PWA manifest is missing a maskable icon.');
+}
+
+const packageManifest = JSON.parse(
+  await readFile(new URL('../package.json', import.meta.url), 'utf8')
+);
+const release = JSON.parse(await readFile(new URL('release.json', dist), 'utf8'));
+if (release.schemaVersion !== 1 || release.application !== packageManifest.name) {
+  failures.push('Release provenance schema or application identity is invalid.');
+}
+if (release.version !== packageManifest.version || !/^\d+\.\d+\.\d+$/.test(release.version)) {
+  failures.push('Release provenance version does not match package.json stable semver.');
+}
+if (!/^[a-f0-9]{40}$/.test(release.revision)) {
+  failures.push('Release provenance does not contain a full Git revision.');
+}
+if (Number.isNaN(Date.parse(release.builtAt)) || typeof release.dirty !== 'boolean') {
+  failures.push('Release provenance build time or clean-tree state is invalid.');
+}
+if (process.env.CI && release.dirty) {
+  failures.push('CI release artifact was built from a dirty working tree.');
+}
+if (!headers.includes('/release.json') || !headers.includes('no-store')) {
+  failures.push('Release provenance must be served with a no-store cache policy.');
 }
 
 if (failures.length > 0) {
