@@ -55,8 +55,8 @@ export default defineConfig({
         short_name: 'Pixavelo',
         description:
           'Convert, optimize, resize, batch-process, edit, privacy-clean and generate web assets locally in your browser.',
-        theme_color: '#ffffff',
-        background_color: '#ffffff',
+        theme_color: '#0d1420',
+        background_color: '#070b13',
         display: 'standalone',
         orientation: 'any',
         start_url: '/',

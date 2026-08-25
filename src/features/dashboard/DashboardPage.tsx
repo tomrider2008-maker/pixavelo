@@ -105,14 +105,6 @@ export default function DashboardPage() {
             <Images size={19} aria-hidden="true" />
             {en.actions.chooseImages}
           </button>
-          <button
-            className="button button--secondary desktop-only"
-            type="button"
-            onClick={() => inputRef.current?.click()}
-          >
-            <span className="button__drop-icon" aria-hidden="true" />
-            {en.actions.dropAnywhere}
-          </button>
         </div>
         <div className="privacy-line">
           <ShieldCheck size={18} aria-hidden="true" />
@@ -176,6 +168,10 @@ export default function DashboardPage() {
         <strong>{dragging ? 'Release to add images' : en.dashboard.dropTitle}</strong>
         <span className="desktop-drop-hint">{en.dashboard.dropHint}</span>
         <span className="mobile-drop-hint">{en.dashboard.mobileDropHint}</span>
+        <span className="drop-zone__trust">
+          <ShieldCheck size={15} aria-hidden="true" />
+          Files never leave this device.
+        </span>
       </div>
 
       <section className="workflows" aria-labelledby="workflows-title">

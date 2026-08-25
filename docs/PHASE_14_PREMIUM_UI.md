@@ -1,0 +1,55 @@
+# Phase 14 — premium interface activation
+
+Status: branch implementation; production activation is not authorized  
+Branch: `phase14/premium-ui`  
+Commercial impact: none; no paid dependency, service, font, account, upload, or telemetry was added
+
+## Objective
+
+Upgrade Pixavelo's visual system, interaction hierarchy, responsive shell, and install identity while preserving the product's local-only processing architecture and all existing tools.
+
+## Implemented scope
+
+- Replaced the flat application palette with a tokenized light/dark system built around midnight ink, disciplined neutral surfaces, electric indigo, and a restricted cyan glint.
+- Reworked the desktop header, command trigger, navigation rail, active state, status bar, dialogs, notices, and shared control elevation.
+- Rebuilt the dashboard composition around the primary image-intake decision, with a direct local-only assurance, compact quick actions, and denser workflow launchers.
+- Reduced the mobile primary navigation to five persistent destinations: Dashboard, Convert, Choose, Edit, and More. Privacy and every other tool remain available through More.
+- Added a compact mobile Local status, safe-area-aware bottom navigation, two-column workflow launchers, and a horizontally scrollable quick-action rail.
+- Applied the shared surface and border treatment to converter, privacy, web asset, settings, and developer-tool workspaces without changing their workflow logic.
+- Replaced the in-app brand mark, favicon, standard PWA icon, maskable PWA icon, manifest colors, and dynamic browser theme colors with the Phase 14 identity.
+- Preserved reduced-motion behavior, visible focus, minimum touch targets, offline operation, and service-worker prompt activation.
+
+## Design evidence
+
+- `docs/design/phase14/DESIGN_SYSTEM.md`
+- `docs/design/phase14/premium-dashboard-desktop.png`
+- `docs/design/phase14/premium-dashboard-mobile.png`
+
+The generated references are direction artifacts, not pixel-perfect acceptance screenshots. The implementation intentionally preserves real Pixavelo content density, browser constraints, and responsive behavior where the generated mobile concept could not.
+
+## Performance decision
+
+The production CSS artifact is `143,260` bytes raw and approximately `24.7 KiB` gzip. The former 128 KiB raw ceiling predated the full light/dark application system and rejected the implementation even though network transfer remained small.
+
+Phase 14 raises the raw ceiling to 144 KiB and adds a stricter 28 KiB gzip ceiling. This makes the transfer budget explicit and still leaves roughly 12% compressed headroom. JavaScript and codec budgets are unchanged.
+
+## Validation commands
+
+```powershell
+npm run check
+npm run audit:hardening
+npm run audit:operations
+npm run audit:production
+npx playwright test e2e/accessibility.spec.ts e2e/core.spec.ts --project=chromium --project=mobile-chromium
+npx playwright test e2e/pwa.spec.ts --project=chromium
+```
+
+The full multi-browser gate remains required before production activation:
+
+```powershell
+npm run test:e2e
+```
+
+## Activation boundary
+
+The Phase 12 expansion gate still blocks a production deployment. Phase 14 may be committed, pushed, and deployed only to a non-production Cloudflare Pages branch preview. Production must remain at its certified Phase 12 revision until the external expansion approval is recorded and the complete release gate passes on the exact release commit.

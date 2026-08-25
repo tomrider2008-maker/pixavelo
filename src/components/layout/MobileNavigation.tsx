@@ -9,13 +9,16 @@ interface MobileNavigationProps {
 
 export function MobileNavigation({ onChoose, onMore }: MobileNavigationProps) {
   const location = useLocation();
-  const moreActive = !mobileNavigation.some((item) =>
+  const leadingItems = mobileNavigation.slice(0, 2);
+  const trailingItems = mobileNavigation.slice(2, 3);
+  const visibleItems = [...leadingItems, ...trailingItems];
+  const moreActive = !visibleItems.some((item) =>
     item.end ? location.pathname === item.to : location.pathname.startsWith(item.to)
   );
 
   return (
     <nav className="mobile-navigation" aria-label="Mobile navigation">
-      {mobileNavigation.slice(0, 2).map((item) => {
+      {leadingItems.map((item) => {
         const Icon = item.icon;
         return (
           <NavLink
@@ -34,7 +37,7 @@ export function MobileNavigation({ onChoose, onMore }: MobileNavigationProps) {
         </span>
         Choose
       </button>
-      {mobileNavigation.slice(2).map((item) => {
+      {trailingItems.map((item) => {
         const Icon = item.icon;
         return (
           <NavLink key={item.to} to={item.to}>

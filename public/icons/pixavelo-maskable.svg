@@ -1,4 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Pixavelo">
-  <rect width="512" height="512" fill="#1746ed"/>
-  <path fill="#fff" d="M144 96h152c77 0 128 47 128 120s-51 120-128 120h-64v88h-88V96Zm88 80v80h64c27 0 40-13 40-40s-13-40-40-40h-64Z"/>
+  <defs>
+    <linearGradient id="p" x1="128" y1="96" x2="384" y2="416" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7691ff"/>
+      <stop offset="1" stop-color="#3558f5"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="#0d1420"/>
+  <path fill="url(#p)" fill-rule="evenodd" d="m256 112 128 73v148L256 406 128 333V185l128-73Zm0 57-80 46v90l80 46 80-46v-90l-80-46Z"/>
+  <path fill="#54d5f0" fill-opacity=".36" d="m256 169 80 46-80 46-80-46 80-46Zm0 92 80-46v90l-80 46v-90Z"/>
 </svg>

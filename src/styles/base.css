@@ -17,6 +17,8 @@ body {
   background: var(--color-canvas);
   font-size: 14px;
   line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
 }
 
 button,
@@ -109,6 +111,8 @@ ul {
   transition:
     background-color var(--transition-fast),
     border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    color var(--transition-fast),
     transform var(--transition-fast);
 }
 
@@ -118,26 +122,36 @@ ul {
 
 .button--primary {
   color: #ffffff;
-  background: var(--color-accent);
-  box-shadow: var(--shadow-control);
-  /* Keep the foreground/background pair atomic when a disabled action becomes ready. */
+  background: linear-gradient(135deg, #496fff 0%, var(--color-accent) 48%, #3448d9 100%);
+  border-color: color-mix(in srgb, var(--color-accent-strong) 72%, transparent);
+  box-shadow:
+    0 10px 24px color-mix(in srgb, var(--color-accent) 24%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
   transition:
     border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    filter var(--transition-fast),
     transform var(--transition-fast);
 }
 
 .button--primary:hover {
-  background: var(--color-accent-strong);
+  filter: brightness(1.07) saturate(1.04);
+  box-shadow:
+    0 13px 30px color-mix(in srgb, var(--color-accent) 30%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 .button--secondary {
   color: var(--color-text);
   background: var(--color-surface);
   border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-control);
 }
 
 .button--secondary:hover {
-  border-color: var(--color-accent);
+  color: var(--color-accent-strong);
+  background: var(--color-surface-muted);
+  border-color: color-mix(in srgb, var(--color-accent) 58%, var(--color-border));
 }
 
 .button--inline {
@@ -158,7 +172,7 @@ ul {
   flex: 0 0 auto;
   place-items: center;
   color: var(--color-text);
-  background: var(--color-surface);
+  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-control);
@@ -171,7 +185,7 @@ ul {
 
 .icon-button:hover {
   color: var(--color-accent);
-  border-color: var(--color-border-strong);
+  border-color: color-mix(in srgb, var(--color-accent) 42%, var(--color-border));
   background: var(--color-surface-muted);
 }
 

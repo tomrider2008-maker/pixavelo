@@ -83,7 +83,7 @@ export function PreferencesProvider({ children }: { readonly children: ReactNode
     document.documentElement.style.colorScheme = resolvedTheme;
     document
       .querySelector('meta[name="theme-color"]')
-      ?.setAttribute('content', resolvedTheme === 'dark' ? '#10131a' : '#ffffff');
+      ?.setAttribute('content', resolvedTheme === 'dark' ? '#070b13' : '#f4f6fb');
     localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
   }, [preferences, resolvedTheme]);
 

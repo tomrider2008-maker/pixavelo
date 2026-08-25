@@ -1,6 +1,7 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { gzipSync } from 'node:zlib';
 
 const dist = new URL('../dist/', import.meta.url);
 const distPath = fileURLToPath(dist);
@@ -33,6 +34,7 @@ if (sourceMaps.length > 0)
 let javascriptBytes = 0;
 let codecJavascriptBytes = 0;
 let cssBytes = 0;
+let cssGzipBytes = 0;
 const codecJavascriptPattern =
   /^assets[\\/](?:avif[_-]|avifCodec-|avifDecoder-|decode-|encode-|heic-|heifCodec-|heifDecoder-|tiffCodec-|tiffDecoder-).*\.js$/;
 for (const path of files) {
@@ -42,7 +44,10 @@ for (const path of files) {
     javascriptBytes += size;
     if (codecJavascriptPattern.test(path)) codecJavascriptBytes += size;
   }
-  if (path.endsWith('.css')) cssBytes += size;
+  if (path.endsWith('.css')) {
+    cssBytes += size;
+    cssGzipBytes += gzipSync(await readFile(join(distPath, path))).byteLength;
+  }
 }
 const indexHtml = await readFile(new URL('index.html', dist), 'utf8');
 const entryScript = /<script[^>]+src="([^"]+\.js)"/.exec(indexHtml)?.[1]?.replace(/^\//, '');
@@ -57,7 +62,9 @@ if (codecJavascriptBytes > 220 * 1024)
   failures.push(`Lazy codec JavaScript budget exceeded: ${codecJavascriptBytes} bytes`);
 if (javascriptBytes > 1100 * 1024)
   failures.push(`Total lazy-inclusive JavaScript ceiling exceeded: ${javascriptBytes} bytes`);
-if (cssBytes > 128 * 1024) failures.push(`CSS budget exceeded: ${cssBytes} bytes`);
+if (cssBytes > 144 * 1024) failures.push(`CSS budget exceeded: ${cssBytes} bytes`);
+if (cssGzipBytes > 28 * 1024)
+  failures.push(`Compressed CSS budget exceeded: ${cssGzipBytes} bytes`);
 
 const heifWasm = files.find((path) => /^assets[\\/]heic_dec-.*\.wasm$/.test(path));
 if (!heifWasm) failures.push('Lazy HEIF WebAssembly asset is missing.');
@@ -136,6 +143,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `Release artifact verified (${Math.round(entryScriptBytes / 1024)} KiB startup JS, ${Math.round(applicationJavascriptBytes / 1024)} KiB application JS, ${Math.round(codecJavascriptBytes / 1024)} KiB lazy codec JS, ${Math.round(cssBytes / 1024)} KiB CSS).`
+    `Release artifact verified (${Math.round(entryScriptBytes / 1024)} KiB startup JS, ${Math.round(applicationJavascriptBytes / 1024)} KiB application JS, ${Math.round(codecJavascriptBytes / 1024)} KiB lazy codec JS, ${Math.round(cssBytes / 1024)} KiB CSS raw, ${Math.round(cssGzipBytes / 1024)} KiB CSS gzip).`
   );
 }
