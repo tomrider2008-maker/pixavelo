@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
-import { basename, join } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const options = parseArguments(process.argv.slice(2));
@@ -182,7 +182,7 @@ async function sourceVerified(observation, files) {
 }
 
 async function write(path, contents) {
-  await mkdir(new URL('./', toFileUrl(path)), { recursive: true });
+  await mkdir(dirname(resolve(path)), { recursive: true });
   await writeFile(path, contents);
 }
 
@@ -202,10 +202,4 @@ function parseArguments(args) {
     else throw new Error(`Unknown SLO reporting argument: ${value}`);
   }
   return parsed;
-}
-
-function toFileUrl(path) {
-  const normalized = path.replaceAll('\\', '/');
-  const parent = normalized.slice(0, Math.max(0, normalized.lastIndexOf('/') + 1));
-  return new URL(parent || './', `file:///${process.cwd().replaceAll('\\', '/')}/`);
 }

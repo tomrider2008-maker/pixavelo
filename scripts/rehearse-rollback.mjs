@@ -1,4 +1,5 @@
 import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
 import {
   assertRollbackTarget,
   assertTargetRelease,
@@ -59,7 +60,7 @@ const report = {
   cases,
   passed: cases.every((entry) => entry.passed)
 };
-await mkdir(new URL('./', toFileUrl(reportPath)), { recursive: true });
+await mkdir(dirname(resolve(reportPath)), { recursive: true });
 await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`);
 if (!report.passed) {
   console.error('Rollback contract rehearsal failed.');
@@ -99,10 +100,4 @@ function parseArguments(args) {
     else throw new Error(`Unknown rollback rehearsal argument: ${args[index]}`);
   }
   return parsed;
-}
-
-function toFileUrl(path) {
-  const normalized = path.replaceAll('\\', '/');
-  const parent = normalized.slice(0, Math.max(0, normalized.lastIndexOf('/') + 1));
-  return new URL(parent || './', `file:///${process.cwd().replaceAll('\\', '/')}/`);
 }

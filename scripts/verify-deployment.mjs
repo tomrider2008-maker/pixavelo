@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { Buffer } from 'node:buffer';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { setTimeout as delay } from 'node:timers/promises';
 
@@ -191,7 +192,7 @@ try {
   report.failures.push(error instanceof Error ? error.message : String(error));
 }
 
-await mkdir(new URL('./', toFileUrl(reportPath)), { recursive: true });
+await mkdir(dirname(resolve(reportPath)), { recursive: true });
 await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`);
 if (report.failures.length > 0) {
   console.error(report.failures.map((failure) => `- ${failure}`).join('\n'));
@@ -263,10 +264,4 @@ function parseArguments(args) {
     else throw new Error(`Unknown deployment verification argument: ${value}`);
   }
   return parsed;
-}
-
-function toFileUrl(path) {
-  const normalized = path.replaceAll('\\', '/');
-  const parent = normalized.slice(0, Math.max(0, normalized.lastIndexOf('/') + 1));
-  return new URL(parent || './', `file:///${process.cwd().replaceAll('\\', '/')}/`);
 }

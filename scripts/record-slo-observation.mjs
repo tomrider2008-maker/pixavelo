@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
 
 const options = parseArguments(process.argv.slice(2));
 if (!['endpoint', 'browser'].includes(options.kind)) {
@@ -16,7 +17,7 @@ const output = { ...unsigned, evidenceHash };
 const outputPath =
   options.output ??
   `.artifacts/operations/slo-observation-${options.kind}-${output.observationId}.json`;
-await mkdir(new URL('./', toFileUrl(outputPath)), { recursive: true });
+await mkdir(dirname(resolve(outputPath)), { recursive: true });
 await writeFile(outputPath, `${JSON.stringify(output, null, 2)}\n`);
 console.log(
   `Recorded ${options.kind} SLO observation ${output.observationId} (${summarizeStatuses(output.objectives)}).`
@@ -178,10 +179,4 @@ function parseArguments(args) {
 
 function toCamelCase(value) {
   return value.replace(/-([a-z])/g, (_match, letter) => letter.toUpperCase());
-}
-
-function toFileUrl(path) {
-  const normalized = path.replaceAll('\\', '/');
-  const parent = normalized.slice(0, Math.max(0, normalized.lastIndexOf('/') + 1));
-  return new URL(parent || './', `file:///${process.cwd().replaceAll('\\', '/')}/`);
 }
