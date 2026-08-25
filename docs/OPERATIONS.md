@@ -125,4 +125,5 @@ linked to the failing run. No user filename, image, metadata, pixel, download or
 - Apply production dependency changes only after the full release gate and bundle/codec budget review.
 - Review `npm audit`, the CycloneDX SBOM, runtime licenses and the browser/device matrix for every release.
 - Rotate Cloudflare tokens according to organizational policy; never commit OAuth or API credentials.
-- The scheduled workflows become active only after this repository is hosted on GitHub with Actions enabled.
+- The schedules are installed on the GitHub default branch. Treat them as operationally observed only after actual
+  hourly and daily `schedule` event records exist; a manual dispatch proves the workflow, not the scheduler.

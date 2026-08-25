@@ -63,5 +63,8 @@ The report requires an endpoint gap no larger than 90 minutes and a privacy-evid
 the entire requested window. It reports sampled availability separately from conservative unavailable hours, verifies
 every observation hash, and lists all observed deployment revisions.
 
-Current status on 2026-08-25: one endpoint observation passed availability, release integrity and the five-second
-latency guardrail. Privacy was not observed by that endpoint run. The 30-day window is therefore explicitly incomplete.
+Current status on 2026-08-25: the durable local baseline plus successful manual GitHub run `32879256015` aggregate to
+seven verified observations. Two endpoint observations passed availability, release integrity and the five-second
+latency guardrail; one Chromium browser observation passed privacy. No objective failure was present. The hourly and
+daily schedules have not yet produced an actual `schedule` event record, and the 30-day window is explicitly
+incomplete.
