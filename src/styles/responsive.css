@@ -190,6 +190,10 @@
     display: none;
   }
 
+  .service-worker-update {
+    bottom: calc(var(--mobile-nav-height) + 12px);
+  }
+
   .mobile-navigation {
     position: fixed;
     z-index: 300;
@@ -656,6 +660,18 @@
     top: calc(var(--header-height) + 10px);
     right: 10px;
     width: calc(100vw - 20px);
+  }
+
+  .service-worker-update {
+    right: 10px;
+    bottom: calc(var(--mobile-nav-height) + 10px);
+    width: calc(100vw - 20px);
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .service-worker-update .button {
+    grid-column: 1 / -1;
+    width: 100%;
   }
 
   .tool-file-row {

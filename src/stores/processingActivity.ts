@@ -18,6 +18,10 @@ const subscribe = (listener: () => void) => {
 
 const getSnapshot = () => activity;
 
+export function hasProcessingActivity() {
+  return activity.active > 0 || activity.queued > 0;
+}
+
 export function setProcessingActivity(next: ProcessingActivity) {
   if (
     activity.queued === next.queued &&
