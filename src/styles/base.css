@@ -120,6 +120,10 @@ ul {
   color: #ffffff;
   background: var(--color-accent);
   box-shadow: var(--shadow-control);
+  /* Keep the foreground/background pair atomic when a disabled action becomes ready. */
+  transition:
+    border-color var(--transition-fast),
+    transform var(--transition-fast);
 }
 
 .button--primary:hover {
