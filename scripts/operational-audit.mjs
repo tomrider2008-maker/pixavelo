@@ -11,6 +11,10 @@ for (const script of [
   'release:clean',
   'verify:deployment',
   'rollback:pages',
+  'rollback:rehearse',
+  'observe:slo',
+  'report:slo',
+  'certify:device',
   'deploy:pages'
 ]) {
   if (!packageManifest.scripts?.[script]) failures.push(`package.json: missing ${script}`);
@@ -48,6 +52,15 @@ if (!productionSmoke.includes("cron: '15 3 * * *'")) {
 if (!productionSmoke.includes('verify:deployment')) {
   failures.push('production-smoke.yml: deployment verifier is not executed');
 }
+if (!productionSmoke.includes('observe:slo')) {
+  failures.push('production-smoke.yml: SLO observations are not retained');
+}
+if (!productionSmoke.includes('failure-escalation')) {
+  failures.push('production-smoke.yml: failure escalation is missing');
+}
+if (!productionSmoke.includes('retention-days: 90')) {
+  failures.push('production-smoke.yml: 90-day evidence retention is missing');
+}
 
 const dependabot = await read('.github/dependabot.yml');
 for (const ecosystem of ['npm', 'github-actions']) {
@@ -57,9 +70,25 @@ for (const ecosystem of ['npm', 'github-actions']) {
 }
 
 const viteConfig = await read('vite.config.ts');
-for (const control of ['cleanupOutdatedCaches: true', 'clientsClaim: true', 'skipWaiting: true']) {
+for (const control of [
+  "registerType: 'prompt'",
+  'cleanupOutdatedCaches: true',
+  'clientsClaim: true',
+  'skipWaiting: false'
+]) {
   if (!viteConfig.includes(control))
     failures.push(`vite.config.ts: missing PWA control ${control}`);
+}
+if (viteConfig.includes('skipWaiting: true')) {
+  failures.push(
+    'vite.config.ts: service-worker activation can still bypass the safe update prompt'
+  );
+}
+const updateLifecycle = await read('src/components/feedback/ServiceWorkerUpdate.tsx');
+for (const control of ['New version available', 'hasProcessingActivity', 'SKIP_WAITING']) {
+  if (!updateLifecycle.includes(control)) {
+    failures.push(`ServiceWorkerUpdate.tsx: missing lifecycle control ${control}`);
+  }
 }
 const headers = await read('public/_headers');
 if (!headers.includes('/release.json') || !headers.includes('no-store')) {
@@ -73,7 +102,15 @@ for (const [file, headings] of [
     ['Release procedure', 'Rollback procedure', 'Incident response', 'Service-worker recovery']
   ],
   ['docs/PHYSICAL_DEVICE_QA.md', ['Release sign-off', 'iOS Safari', 'Android Chrome']],
-  ['docs/PHASE_12_OPERATIONS.md', ['Phase 12', 'Acceptance status']]
+  ['docs/PHASE_12_OPERATIONS.md', ['Phase 12', 'Acceptance status']],
+  [
+    'docs/PHASE_13_CERTIFICATION.md',
+    ['Phase 13', 'Go/no-go decision', 'External activation gates']
+  ],
+  [
+    'docs/GITHUB_OPERATIONS_ACTIVATION.md',
+    ['Protected production environment', 'Secret inventory', 'Activation verification']
+  ]
 ]) {
   const source = await read(file);
   for (const heading of headings) {

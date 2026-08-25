@@ -1,38 +1,38 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
+import {
+  assertRollbackTarget,
+  assertTargetRelease,
+  immutableDeploymentUrl,
+  revisionsMatch,
+  validateRollbackOptions
+} from './lib/rollback-contract.mjs';
 
-const options = parseArguments(process.argv.slice(2));
+const options = validateRollbackOptions(parseArguments(process.argv.slice(2)));
 const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
 const apiToken = process.env.CLOUDFLARE_API_TOKEN;
-const projectName = options.project ?? 'pixavelo';
+const projectName = options.project;
 
-if (options.confirm !== 'ROLLBACK') {
-  throw new Error(
-    'Rollback refused. Pass --confirm ROLLBACK after reviewing the target deployment.'
-  );
-}
-if (!/^[a-f0-9-]{36}$/i.test(options.deployment ?? '')) {
-  throw new Error('Rollback refused. --deployment must be a Cloudflare deployment UUID.');
-}
-if (!/^[a-z0-9-]+$/.test(projectName)) throw new Error('Rollback refused. Invalid project name.');
 if (!accountId || !/^[a-f0-9]{32}$/i.test(accountId)) {
   throw new Error('CLOUDFLARE_ACCOUNT_ID is missing or invalid.');
 }
 if (!apiToken)
   throw new Error('CLOUDFLARE_API_TOKEN is required and must have Pages Write access.');
-if (options.expectedRevision && !/^[a-f0-9]{7,40}$/i.test(options.expectedRevision)) {
-  throw new Error('Rollback refused. --expected-revision must be a Git revision.');
-}
 
 const endpoint = `https://api.cloudflare.com/client/v4/accounts/${accountId}/pages/projects/${projectName}/deployments/${options.deployment}`;
 const targetPayload = await cloudflare(endpoint);
 const target = targetPayload.result;
-if (!target || String(target.environment).toLowerCase() !== 'production') {
-  throw new Error('Rollback refused. The target is not a production deployment.');
+assertRollbackTarget(target, options.deployment);
+const targetUrl = immutableDeploymentUrl(target, projectName);
+const targetReleaseResponse = await globalThis.fetch(new URL('/release.json', targetUrl), {
+  cache: 'no-store',
+  signal: globalThis.AbortSignal.timeout(15_000)
+});
+if (!targetReleaseResponse.ok) {
+  throw new Error('Rollback refused. Target release provenance is unavailable.');
 }
-if (target.latest_stage?.status !== 'success') {
-  throw new Error('Rollback refused. The target deployment did not complete successfully.');
-}
+const targetRelease = await targetReleaseResponse.json();
+assertTargetRelease(targetRelease, options.expectedRevision);
 
 const rollbackPayload = await cloudflare(`${endpoint}/rollback`, { method: 'POST' });
 const result = rollbackPayload.result;
@@ -40,7 +40,9 @@ const report = {
   schemaVersion: 1,
   project: projectName,
   targetDeploymentId: options.deployment,
-  expectedRevision: options.expectedRevision ?? null,
+  targetUrl: targetUrl.href.replace(/\/$/, ''),
+  expectedRevision: options.expectedRevision,
+  targetRelease,
   rolledBackAt: new Date().toISOString(),
   resultDeploymentId: result?.id ?? null,
   aliases: result?.aliases ?? []
@@ -51,28 +53,26 @@ await writeFile(
   `${JSON.stringify(report, null, 2)}\n`
 );
 
-if (options.expectedRevision) {
-  const baseUrl = options.baseUrl ?? 'https://pixavelo.pages.dev';
-  let verified = false;
-  for (let attempt = 0; attempt < 12; attempt += 1) {
-    try {
-      const response = await globalThis.fetch(new URL('/release.json', baseUrl), {
-        cache: 'no-store',
-        signal: globalThis.AbortSignal.timeout(10_000)
-      });
-      const release = await response.json();
-      if (revisionsMatch(release.revision, options.expectedRevision)) {
-        verified = true;
-        break;
-      }
-    } catch {
-      // The canonical alias can take a few seconds to converge after rollback.
+const baseUrl = options.baseUrl ?? 'https://pixavelo.pages.dev';
+let verified = false;
+for (let attempt = 0; attempt < 12; attempt += 1) {
+  try {
+    const response = await globalThis.fetch(new URL('/release.json', baseUrl), {
+      cache: 'no-store',
+      signal: globalThis.AbortSignal.timeout(10_000)
+    });
+    const release = await response.json();
+    if (revisionsMatch(release.revision, options.expectedRevision)) {
+      verified = true;
+      break;
     }
-    await delay(2500);
+  } catch {
+    // The canonical alias can take a few seconds to converge after rollback.
   }
-  if (!verified)
-    throw new Error('Rollback completed, but the expected production revision was not observed.');
+  await delay(2500);
 }
+if (!verified)
+  throw new Error('Rollback completed, but the expected production revision was not observed.');
 
 console.log(`Rolled ${projectName} back to deployment ${options.deployment}.`);
 
@@ -89,12 +89,6 @@ async function cloudflare(url, init = {}) {
     throw new Error(`Cloudflare Pages request failed: ${message}`);
   }
   return payload;
-}
-
-function revisionsMatch(actual, expected) {
-  const left = String(actual).toLowerCase();
-  const right = String(expected).toLowerCase();
-  return left === right || left.startsWith(right) || right.startsWith(left);
 }
 
 function parseArguments(args) {

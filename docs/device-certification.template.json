@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "status": "pending",
+  "platform": "windows",
+  "createdAt": null,
+  "release": {
+    "version": "",
+    "revision": "",
+    "url": ""
+  },
+  "device": {
+    "model": "",
+    "formFactor": "",
+    "memoryClass": "",
+    "displayClass": "",
+    "viewports": [],
+    "orientations": [],
+    "osVersion": "",
+    "browser": "",
+    "browserVersion": ""
+  },
+  "tester": {
+    "name": "",
+    "date": ""
+  },
+  "checks": [
+    { "id": "dashboard-and-layout", "result": "pending", "evidence": [], "notes": "" },
+    { "id": "pwa-install-and-offline", "result": "pending", "evidence": [], "notes": "" },
+    { "id": "conversion-and-download", "result": "pending", "evidence": [], "notes": "" },
+    { "id": "feature-regression", "result": "pending", "evidence": [], "notes": "" },
+    { "id": "privacy-boundary", "result": "pending", "evidence": [], "notes": "" },
+    { "id": "upgrade-lifecycle", "result": "pending", "evidence": [], "notes": "" },
+    { "id": "stress-and-resource-pressure", "result": "pending", "evidence": [], "notes": "" }
+  ],
+  "evidence": []
+}

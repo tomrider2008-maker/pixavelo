@@ -14,7 +14,17 @@ export default defineConfig({
   workers: 1,
   timeout: 30_000,
   expect: { timeout: 10_000 },
-  reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-live-report' }]],
+  reporter: [
+    ['list'],
+    ['html', { open: 'never', outputFolder: 'playwright-live-report' }],
+    [
+      'json',
+      {
+        outputFile:
+          process.env.PIXAVELO_BROWSER_REPORT ?? '.artifacts/operations/live-browser-report.json'
+      }
+    ]
+  ],
   outputDir: 'test-results-live',
   use: {
     baseURL,

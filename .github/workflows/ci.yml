@@ -39,7 +39,7 @@ jobs:
           name: release-evidence-${{ github.sha }}
           path: .artifacts/release/
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 90
 
   browser-smoke:
     needs: quality
@@ -78,4 +78,4 @@ jobs:
             playwright-report/
             test-results/
           if-no-files-found: ignore
-          retention-days: 14
+          retention-days: 30

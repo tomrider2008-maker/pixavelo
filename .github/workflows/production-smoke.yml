@@ -8,7 +8,7 @@ on:
         required: false
         default: https://pixavelo.pages.dev
       expected_revision:
-        description: Expected Git revision; defaults to the workflow revision
+        description: Optional production Git revision to require
         required: false
   schedule:
     - cron: '17 * * * *'
@@ -27,7 +27,7 @@ jobs:
     timeout-minutes: 5
     env:
       PIXAVELO_BASE_URL: ${{ inputs.target_url || 'https://pixavelo.pages.dev' }}
-      PIXAVELO_EXPECTED_REVISION: ${{ inputs.expected_revision || github.sha }}
+      PIXAVELO_EXPECTED_REVISION: ${{ inputs.expected_revision }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -36,13 +36,20 @@ jobs:
         with:
           node-version: 24
       - run: npm run verify:deployment
-      - if: failure()
+      - if: always()
+        run: >-
+          npm run observe:slo --
+          --kind endpoint
+          --report .artifacts/operations/deployment-verification.json
+          --status "${{ job.status }}"
+          --run-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      - if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: production-probe-failure-${{ github.run_id }}
+          name: production-observation-endpoint-${{ github.run_id }}-${{ github.run_attempt }}
           path: .artifacts/operations/
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 90
 
   live-browser-matrix:
     if: github.event_name == 'workflow_dispatch' || github.event.schedule == '15 3 * * *'
@@ -51,6 +58,7 @@ jobs:
     timeout-minutes: 20
     env:
       PIXAVELO_BASE_URL: ${{ inputs.target_url || 'https://pixavelo.pages.dev' }}
+      PIXAVELO_BROWSER_REPORT: .artifacts/operations/live-browser-${{ matrix.project }}.json
     strategy:
       fail-fast: false
       matrix:
@@ -76,12 +84,46 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps ${{ matrix.browser }}
       - run: npm run test:live -- --project=${{ matrix.project }}
-      - if: failure()
+      - if: always()
+        run: >-
+          npm run observe:slo --
+          --kind browser
+          --report "${PIXAVELO_BROWSER_REPORT}"
+          --project "${{ matrix.project }}"
+          --status "${{ job.status }}"
+          --privacy-observed "${{ matrix.project == 'chromium' }}"
+          --target "${PIXAVELO_BASE_URL}"
+          --revision "${{ inputs.expected_revision }}"
+          --run-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      - if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: production-browser-failure-${{ matrix.project }}-${{ github.run_id }}
+          name: production-observation-browser-${{ matrix.project }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
+            .artifacts/operations/
             playwright-live-report/
             test-results-live/
           if-no-files-found: ignore
-          retention-days: 30
+          retention-days: 90
+
+  failure-escalation:
+    if: ${{ always() && (needs.availability-probe.result == 'failure' || needs.live-browser-matrix.result == 'failure') }}
+    needs: [availability-probe, live-browser-matrix]
+    permissions:
+      contents: read
+      issues: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+      - env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >-
+          node scripts/escalate-operational-failure.mjs
+          --availability "${{ needs.availability-probe.result }}"
+          --browser "${{ needs.live-browser-matrix.result }}"

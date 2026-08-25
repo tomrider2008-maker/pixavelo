@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
   group: production-release
@@ -50,3 +51,10 @@ jobs:
             test-results/
           if-no-files-found: warn
           retention-days: 90
+      - if: failure()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >-
+          node scripts/escalate-operational-failure.mjs
+          --availability release-failed
+          --browser not-applicable

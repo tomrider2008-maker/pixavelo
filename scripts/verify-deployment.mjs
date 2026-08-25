@@ -20,12 +20,13 @@ const reportPath =
   process.env.PIXAVELO_OPERATION_REPORT ??
   '.artifacts/operations/deployment-verification.json';
 const report = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   target: baseUrl.href.replace(/\/$/, ''),
   checkedAt: new Date().toISOString(),
   expectedRevision: expectedRevision || null,
   release: null,
   startupBytes: 0,
+  routeMeasurements: [],
   checks: [],
   failures: []
 };
@@ -41,6 +42,7 @@ try {
   let indexHtml = '';
   for (const [path, marker] of routeExpectations) {
     const { response, body, durationMs } = await request(path);
+    report.routeMeasurements.push({ path, durationMs });
     check(
       response.status === 200,
       `${path} returns HTTP 200`,
