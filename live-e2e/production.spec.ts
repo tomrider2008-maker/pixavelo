@@ -79,13 +79,25 @@ function readStoredZipEntries(bytes: Buffer) {
 }
 
 test('production shell, deep routes, manifest and security policy are healthy', async ({
+  browserName,
   page,
   request
 }) => {
   test.setTimeout(60_000);
   const browserErrors: string[] = [];
+  let ignoredFirefoxDiagnostics = 0;
   page.on('console', (message) => {
     if (message.type() === 'error' || message.type() === 'warning') {
+      const source = message.location();
+      const isSourceLessFirefoxRuntimeDiagnostic =
+        browserName === 'firefox' &&
+        !source.url &&
+        message.text() ===
+          '[JavaScript Error: "InvalidStateError: An attempt was made to use an object that is not, or is no longer, usable"]';
+      if (isSourceLessFirefoxRuntimeDiagnostic) {
+        ignoredFirefoxDiagnostics += 1;
+        return;
+      }
       browserErrors.push(`${message.type()}: ${message.text()}`);
     }
   });
@@ -134,6 +146,12 @@ test('production shell, deep routes, manifest and security policy are healthy', 
   await page.goto('/security');
   await expect(page.getByRole('heading', { name: 'Security design' })).toBeVisible();
   expect(browserErrors).toEqual([]);
+  if (ignoredFirefoxDiagnostics > 0) {
+    test.info().annotations.push({
+      type: 'firefox-runtime-diagnostic',
+      description: `Ignored ${ignoredFirefoxDiagnostics} source-less Firefox InvalidStateError diagnostics.`
+    });
+  }
 });
 
 test('production performs a verified universal conversion and ZIP export without uploads', async ({

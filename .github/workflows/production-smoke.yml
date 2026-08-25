@@ -35,13 +35,14 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
-      - run: npm run verify:deployment
+      - id: verify-production
+        run: npm run verify:deployment
       - if: always()
         run: >-
           npm run observe:slo --
           --kind endpoint
           --report .artifacts/operations/deployment-verification.json
-          --status "${{ job.status }}"
+          --status "${{ steps.verify-production.outcome }}"
           --run-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
       - if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -83,14 +84,15 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps ${{ matrix.browser }}
-      - run: npm run test:live -- --project=${{ matrix.project }}
+      - id: browser-test
+        run: npm run test:live -- --project=${{ matrix.project }}
       - if: always()
         run: >-
           npm run observe:slo --
           --kind browser
           --report "${PIXAVELO_BROWSER_REPORT}"
           --project "${{ matrix.project }}"
-          --status "${{ job.status }}"
+          --status "${{ steps.browser-test.outcome }}"
           --privacy-observed "${{ matrix.project == 'chromium' }}"
           --target "${PIXAVELO_BASE_URL}"
           --revision "${{ inputs.expected_revision }}"
