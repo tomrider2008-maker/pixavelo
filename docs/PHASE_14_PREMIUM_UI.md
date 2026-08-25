@@ -50,6 +50,14 @@ The full multi-browser gate remains required before production activation:
 npm run test:e2e
 ```
 
+The branch preview uses the guarded release workflow and can never target the production branch:
+
+```powershell
+gh workflow run release.yml --ref phase14/premium-ui -f target=preview -f confirmation=PREVIEW
+```
+
+The preview job reuses the existing credential-only GitHub `production` environment because GitHub environment secrets cannot be copied or read back. Its workflow guard rejects `main`, and Wrangler receives the non-main Git ref as its Cloudflare Pages branch. No production alias, rollback, or `--branch main` operation is executed.
+
 ## Activation boundary
 
 The Phase 12 expansion gate still blocks a production deployment. Phase 14 may be committed, pushed, and deployed only to a non-production Cloudflare Pages branch preview. Production must remain at its certified Phase 12 revision until the external expansion approval is recorded and the complete release gate passes on the exact release commit.

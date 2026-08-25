@@ -3,8 +3,16 @@ name: Production release
 on:
   workflow_dispatch:
     inputs:
+      target:
+        description: Deployment target
+        required: true
+        type: choice
+        default: production
+        options:
+          - production
+          - preview
       confirmation:
-        description: Type DEPLOY to publish this exact revision
+        description: Type DEPLOY for production or PREVIEW for a branch preview
         required: true
 
 permissions:
@@ -17,7 +25,10 @@ concurrency:
 
 jobs:
   release:
-    if: inputs.confirmation == 'DEPLOY'
+    if: >-
+      inputs.target == 'production' &&
+      inputs.confirmation == 'DEPLOY' &&
+      github.ref == 'refs/heads/main'
     environment: production
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -58,3 +69,42 @@ jobs:
           node scripts/escalate-operational-failure.mjs
           --availability release-failed
           --browser not-applicable
+
+  preview:
+    if: >-
+      inputs.target == 'preview' &&
+      inputs.confirmation == 'PREVIEW' &&
+      github.ref != 'refs/heads/main'
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: mkdir -p .artifacts/operations
+      - name: Deploy immutable branch preview
+        run: >-
+          npx wrangler pages deploy dist
+          --project-name pixavelo
+          --branch "${{ github.ref_name }}"
+          --commit-hash "${{ github.sha }}"
+          --commit-message "${{ github.event.head_commit.message || format('Preview {0}', github.sha) }}"
+          --commit-dirty=false
+          | tee .artifacts/operations/preview-deployment.txt
+      - if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: preview-deployment-${{ github.sha }}
+          path: .artifacts/operations/preview-deployment.txt
+          if-no-files-found: warn
+          retention-days: 30
