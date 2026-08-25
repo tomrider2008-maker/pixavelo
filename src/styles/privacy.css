@@ -752,6 +752,10 @@
     flex: 1;
   }
 
+  .privacy-heading-actions .button--primary {
+    display: none;
+  }
+
   .privacy-empty-overview,
   .privacy-layout {
     grid-template-columns: minmax(0, 1fr);
