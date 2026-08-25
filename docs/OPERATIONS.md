@@ -81,7 +81,8 @@ delete the failed deployment until incident evidence and its release artifacts h
 ## Service-worker recovery
 
 The service worker uses `skipWaiting`, `clientsClaim`, outdated-cache cleanup and `no-cache` delivery for `sw.js`.
-Hashed application assets are immutable; the shell and release provenance are not stored by intermediary caches.
+Hashed application assets are immutable. The shell uses Cloudflare Pages' `max-age=0, must-revalidate` policy, and
+release provenance uses `no-store`, so neither can be reused without a freshness check.
 
 For a bad worker release, roll back first, confirm that `/sw.js` and `/release.json` expose the restored release, then
 reload affected tabs. Closing all Pixavelo tabs and reopening the site allows the active worker to take control. As a

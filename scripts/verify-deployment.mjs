@@ -73,10 +73,12 @@ try {
     const value = rootResponse.headers.get(header) ?? '';
     check(value.includes(expected), `${header} is enforced`, `${header} is missing ${expected}`);
   }
+  const shellCacheControl = rootResponse.headers.get('cache-control') ?? '';
   check(
-    (rootResponse.headers.get('cache-control') ?? '').includes('no-store'),
-    'application shell is not stored by intermediary caches',
-    'application shell cache policy is missing no-store'
+    shellCacheControl.includes('no-store') ||
+      (shellCacheControl.includes('max-age=0') && shellCacheControl.includes('must-revalidate')),
+    'application shell cannot be reused without revalidation',
+    `application shell cache policy is unsafe (${shellCacheControl || 'missing'})`
   );
 
   const releaseResponse = await fetchWithRetry(new URL('/release.json', baseUrl), 10);
@@ -163,11 +165,20 @@ try {
       `${assetUrl.pathname} is available`,
       `${assetUrl.pathname} failed`
     );
-    check(
-      (assetResponse.headers.get('cache-control') ?? '').includes('immutable'),
-      `${assetUrl.pathname} is immutable`,
-      `${assetUrl.pathname} cache policy is not immutable`
-    );
+    const assetCacheControl = assetResponse.headers.get('cache-control') ?? '';
+    if (assetUrl.pathname.startsWith('/assets/')) {
+      check(
+        assetCacheControl.includes('immutable'),
+        `${assetUrl.pathname} is immutable`,
+        `${assetUrl.pathname} cache policy is not immutable`
+      );
+    } else {
+      check(
+        assetUrl.pathname === '/registerSW.js' && assetCacheControl.includes('no-cache'),
+        `${assetUrl.pathname} always revalidates`,
+        `${assetUrl.pathname} cache policy is unsafe (${assetCacheControl || 'missing'})`
+      );
+    }
   }
   check(
     report.startupBytes <= 600 * 1024,
