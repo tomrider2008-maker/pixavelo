@@ -19,7 +19,7 @@ State verified on 2026-08-25 UTC:
 | Hourly/daily schedules       | Installed, first scheduled evidence pending | Hourly is minute 17 UTC; daily browser coverage is 03:15 UTC. A manual run is not a schedule record.                                     |
 | Dependabot                   | Active                                      | Vulnerability alerts and automated security fixes are enabled; weekly npm/action updates are configured.                                 |
 | `production` environment     | Partial                                     | Created with deployment branch restricted to `main`; required reviewers and admin-bypass prevention are unavailable on the current plan. |
-| Cloudflare secrets           | Partial                                     | `CLOUDFLARE_ACCOUNT_ID` is installed; `CLOUDFLARE_API_TOKEN` is not installed.                                                           |
+| Cloudflare secrets           | Active                                      | Both production-environment secrets are installed; the token was verified against the `pixavelo` Pages project.                          |
 
 ## Repository controls
 
@@ -52,15 +52,15 @@ avoid the plan requirement.
 
 ## Secret inventory
 
-| Name                    | GitHub location            | Current state | Required scope / handling                                                                |
-| ----------------------- | -------------------------- | ------------- | ---------------------------------------------------------------------------------------- |
-| `CLOUDFLARE_API_TOKEN`  | `production` environment   | Pending       | Cloudflare Account / Cloudflare Pages / Edit for the Pixavelo account; rotate by policy. |
-| `CLOUDFLARE_ACCOUNT_ID` | `production` environment   | Installed     | Treat the 32-hex identifier as sensitive operational metadata.                           |
-| `GITHUB_TOKEN`          | Automatic per workflow run | Active        | No stored value; workflow permissions remain least-privilege.                            |
+| Name                    | GitHub location            | Current state | Required scope / handling                                                     |
+| ----------------------- | -------------------------- | ------------- | ----------------------------------------------------------------------------- |
+| `CLOUDFLARE_API_TOKEN`  | `production` environment   | Installed     | Account-owned Pages Write token for the Pixavelo account; expires 2027-08-26. |
+| `CLOUDFLARE_ACCOUNT_ID` | `production` environment   | Installed     | Treat the 32-hex identifier as sensitive operational metadata.                |
+| `GITHUB_TOKEN`          | Automatic per workflow run | Active        | No stored value; workflow permissions remain least-privilege.                 |
 
 Do not create a Cloudflare global API key. Pixavelo has no application runtime secrets, upload credentials, analytics
-key or account backend. The missing Pages token blocks release and rollback workflow execution; it does not block the
-read-only production monitor.
+key or account backend. The account-owned token was verified with a read-only request that returned the `pixavelo`
+Pages project and production branch `main`; no deployment or rollback was invoked.
 
 ## Operations evidence
 

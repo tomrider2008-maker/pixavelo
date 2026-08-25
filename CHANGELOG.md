@@ -15,7 +15,8 @@ All notable Pixavelo releases are recorded here. Versions follow semantic versio
 - Waiting service workers no longer force activation while local work is queued or processing.
 - Live rollback now verifies the immutable deployment's release provenance before production mutation.
 - GitHub operations are active with restricted Actions permissions, Dependabot, 90-day evidence and failure
-  escalation; protected approvals and the Cloudflare token remain explicit external gates.
+  escalation; protected approvals remain an explicit external gate, while least-privilege Cloudflare credentials are
+  installed in the production environment.
 - Operational evidence tools now support absolute Windows output paths.
 - Primary actions switch disabled/enabled color pairs atomically so WebKit never observes transient low contrast.
 

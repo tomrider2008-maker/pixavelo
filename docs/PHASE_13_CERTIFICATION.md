@@ -4,12 +4,11 @@
 
 **NO-GO for production deployment or feature expansion.** GitHub operations are now active and the manual production
 gate passed, but the Phase 12 expansion gate still requires protected release approval, current physical-device
-evidence and a continuous 30-day observation record. The least-privilege Cloudflare Pages token is also not installed.
-Production remains unchanged on verified release `1.0.0`, revision
+evidence and a continuous 30-day observation record. Production remains unchanged on verified release `1.0.0`, revision
 `8b235d47744a25ee0254ddd0282db56549366eab`.
 
 This decision does not claim physical-device certification, an enforced protected branch/environment, a Cloudflare
-token, a scheduled-run record, production rollback, Phase 13 deployment or a 30-day SLO record.
+deployment, a scheduled-run record, production rollback, Phase 13 deployment or a 30-day SLO record.
 
 ## Certification evidence
 
@@ -25,7 +24,7 @@ token, a scheduled-run record, production rollback, Phase 13 deployment or a 30-
 | Old-client-to-new-release behavior       | Passed in Chromium        | A waiting worker held while local work was queued and adopted only after the queue became idle.                  |
 | Dependabot and vulnerability controls    | Activated                 | Alerts and automated security fixes enabled; weekly npm/action updates and peer-compatible TypeScript guard.     |
 | Protected `main` and production approval | Blocked by GitHub plan    | Private GitHub Free repository cannot enforce branch protection, rulesets or required environment reviewers.     |
-| Cloudflare credentials                   | Partial                   | Account ID secret installed; least-privilege Pages API token pending.                                            |
+| Cloudflare credentials                   | Activated                 | Account ID and account-owned Pages Write token installed; read-only project verification passed.                 |
 | Rollback path                            | Contract rehearsal passed | Six acceptance/rejection cases; zero network requests and zero production mutations.                             |
 | Physical-device matrix                   | Pending real evidence     | Validator and evidence template exist; 0/4 platform families are certified.                                      |
 | Rolling SLO record                       | Incomplete                | Seven verified observations, two availability samples, one privacy sample, zero objective failures; not 30 days. |
@@ -40,15 +39,13 @@ record.
    resolved conversations, blocked force-push/deletion, required production reviewers, prevention of self-review and
    no routine administrator bypass. Making the repository public is an alternative only after an explicit source
    publication decision.
-2. Create a least-privilege Cloudflare token scoped to Account / Cloudflare Pages / Edit for Pixavelo, install it as
-   the `production` environment secret `CLOUDFLARE_API_TOKEN`, and verify it with a read-only Pages project request.
-3. Retain and review the first actual hourly endpoint run and first actual daily browser run. Manual dispatch evidence
+2. Retain and review the first actual hourly endpoint run and first actual daily browser run. Manual dispatch evidence
    does not satisfy this gate.
-4. Complete Windows, macOS, iOS Safari and Android Chrome evidence packages with current physical hardware or a
+3. Complete Windows, macOS, iOS Safari and Android Chrome evidence packages with current physical hardware or a
    managed real-device service.
-5. Accumulate continuous hourly availability and daily privacy evidence for the full 30-day window. The reporter must
+4. Accumulate continuous hourly availability and daily privacy evidence for the full 30-day window. The reporter must
    return `claimable30DayWindow: true` with no privacy or release-integrity miss.
-6. Re-run the clean release gate. Only then may an authorized reviewer approve a protected production deployment.
+5. Re-run the clean release gate. Only then may an authorized reviewer approve a protected production deployment.
 
 ## Accepted risks while blocked
 
@@ -56,7 +53,6 @@ record.
   users. Avoid leaving irreplaceable in-memory work open across a deployment.
 - The private GitHub Free repository permits direct changes to `main` and environment administrator bypass until the
   plan gate is resolved.
-- Release/rollback workflows cannot authenticate to Cloudflare until the Pages API token is installed.
 - Playwright device profiles are not physical evidence for hardware downloads, thermal pressure, PWA installation or
   mobile operating-system lifecycle behavior.
 - Seven observations prove successful points in time, not monthly availability.
