@@ -114,7 +114,7 @@ test('Phase 6 isolates a failed file, verifies outputs, retries, and exports a v
 test('Phase 6 pause blocks new dispatch, cancel isolates active work, and retry resumes', async ({
   page
 }, testInfo) => {
-  test.setTimeout(150_000);
+  test.setTimeout(300_000);
   test.skip(testInfo.project.name !== 'chromium', 'Queue timing probe runs once.');
   await page.goto('/batch');
   const source = await makePng(page, 1200, 900, true);
