@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "observationId": "536c39f23de408d1d9c701a7",
+  "kind": "endpoint",
+  "observedAt": "2026-08-25T16:05:03.593Z",
+  "target": "https://pixavelo.pages.dev",
+  "source": {
+    "type": "local-phase13-audit",
+    "runUrl": null,
+    "reportPath": "docs/evidence/phase13/2026-08-25-deployment-verification.json",
+    "reportSha256": "d18d376ee8b83fef950afdda3c5ed87c9d7f0546f04c86987c4c7a6203b03d1c"
+  },
+  "release": {
+    "version": "1.0.0",
+    "revision": "8b235d47744a25ee0254ddd0282db56549366eab",
+    "dirty": false
+  },
+  "objectives": {
+    "availability": "passed",
+    "privacy": "not_observed",
+    "releaseIntegrity": "passed",
+    "latency": "passed"
+  },
+  "measurements": {
+    "checksPassed": 53,
+    "checksFailed": 0,
+    "startupBytes": 435081,
+    "routeDurationsMs": [
+      { "path": "/", "durationMs": 1752 },
+      { "path": "/privacy", "durationMs": 1117 },
+      { "path": "/web-assets", "durationMs": 374 },
+      { "path": "/developer-tools", "durationMs": 362 },
+      { "path": "/security", "durationMs": 316 }
+    ],
+    "maximumRouteDurationMs": 1752
+  },
+  "evidenceHash": "1fa3a62be26b0bcc175d116cf96a8a4d50375378008311a63bc841e6b437b8de"
+}

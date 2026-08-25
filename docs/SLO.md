@@ -45,3 +45,23 @@ missed. Resume only after the incident is contained, production is verified and 
 - Review bundle and codec budgets on every dependency change.
 - Review the supported physical-device matrix at least quarterly and before a major release.
 - Do not claim the 30-day SLO until monitoring has been active for the complete observation window.
+
+## Observation ledger and reporting
+
+Every endpoint run and browser project emits an immutable JSON observation containing the production target, observed
+revision where available, objective-specific statuses, measurements, source-report SHA-256 and an evidence hash. The
+workflow retains these artifacts for 90 days. Endpoint observations do not claim privacy; only the live Chromium
+workflow that executes no-upload assertions may record the daily privacy result.
+
+Aggregate downloaded workflow artifacts with the one verifiable Phase 13 baseline observation:
+
+```bash
+npm run report:slo -- --input docs/evidence/phase13 --input tmp/slo-ledger
+```
+
+The report requires an endpoint gap no larger than 90 minutes and a privacy-evidence gap no larger than 36 hours over
+the entire requested window. It reports sampled availability separately from conservative unavailable hours, verifies
+every observation hash, and lists all observed deployment revisions.
+
+Current status on 2026-08-25: one endpoint observation passed availability, release integrity and the five-second
+latency guardrail. Privacy was not observed by that endpoint run. The 30-day window is therefore explicitly incomplete.

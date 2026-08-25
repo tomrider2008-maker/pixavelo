@@ -2,6 +2,19 @@
 
 All notable Pixavelo releases are recorded here. Versions follow semantic versioning.
 
+## [Unreleased]
+
+### Added
+
+- Phase 13 work-aware PWA update prompt and old-client-to-new-release browser coverage.
+- Digest-protected SLO observations/reporting, executable device evidence validation and a no-network rollback rehearsal.
+- GitHub-ready 90-day operational evidence, scheduled failure escalation and activation/certification runbooks.
+
+### Changed
+
+- Waiting service workers no longer force activation while local work is queued or processing.
+- Live rollback now verifies the immutable deployment's release provenance before production mutation.
+
 ## [1.0.0] - 2026-08-25
 
 ### Added

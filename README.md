@@ -8,14 +8,15 @@ Pixavelo is a static React application for local browser image processing. The c
 production foundation, a verified native core for JPEG/PNG/WebP conversion, the Phase 3 Universal Converter,
 Phase 4 advanced-format imports, the enterprise Phase 5 compression/resize workspaces, Phase 6 Batch Studio and the
 Phase 7 non-destructive Image Editor, Phase 8 Metadata & Privacy, Phase 9 Web Asset Studio, Phase 10 Professional
-Utilities, Phase 11 release hardening and Phase 12 production operations.
+Utilities, Phase 11 release hardening, Phase 12 production operations and the locally completed Phase 13
+certification controls.
 
 ## What is implemented
 
 - Responsive desktop, tablet and mobile application shell.
 - Accessible navigation drawer, command palette, error boundaries, toasts, focus handling and reduced motion.
 - Light, dark and system themes with versioned local preferences.
-- PWA manifest, service worker, offline application cache and automatic release activation for long-lived sessions.
+- PWA manifest, offline application cache and accessible work-aware release adoption for long-lived sessions.
 - Cloudflare Pages SPA routing and restrictive security headers.
 - Magic-byte format detection for JPEG, PNG, WebP, AVIF, BMP, GIF, HEIC/HEIF, TIFF, SVG and ICO.
 - Header-level dimension parsing and pixel/file safety limits before supported decoders run.
@@ -78,6 +79,8 @@ Utilities, Phase 11 release hardening and Phase 12 production operations.
   deployment evidence.
 - Hourly production availability verification, daily five-project browser checks, guarded rollback automation,
   operational SLOs, incident handling and physical-device sign-off criteria.
+- Digest-protected SLO observations and reporting, executable physical-device evidence validation, non-mutating
+  rollback rehearsal, 90-day operational evidence configuration and GitHub issue escalation.
 
 ## Local development
 
@@ -142,6 +145,8 @@ and verifies the canonical deployment. It no longer permits `--commit-dirty=true
 - [Operations and rollback runbook](docs/OPERATIONS.md)
 - [Physical-device QA matrix](docs/PHYSICAL_DEVICE_QA.md)
 - [Phase 12 operations evidence](docs/PHASE_12_OPERATIONS.md)
+- [GitHub operations activation](docs/GITHUB_OPERATIONS_ACTIVATION.md)
+- [Phase 13 certification and go/no-go](docs/PHASE_13_CERTIFICATION.md)
 - [Changelog](CHANGELOG.md)
 
 ## Design references

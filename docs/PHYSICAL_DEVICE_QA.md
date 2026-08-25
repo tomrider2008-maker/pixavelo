@@ -34,3 +34,40 @@ behavior.
 Attach screenshots for the dashboard, one processing result, offline mode and any defect. Record exact OS/browser
 versions, device model, available memory class, release version and `/release.json` revision. Synthetic images only;
 never put private user media into QA evidence.
+
+## Executable evidence workflow
+
+Create one isolated package per physical platform; `tmp/` is suitable until the reviewed evidence destination is
+known:
+
+```bash
+npm run certify:device -- init --platform windows --output tmp/device-windows/certification.json
+npm run certify:device -- init --platform macos --output tmp/device-macos/certification.json
+npm run certify:device -- init --platform ios-safari --output tmp/device-ios/certification.json
+npm run certify:device -- init --platform android-chrome --output tmp/device-android/certification.json
+```
+
+Create a separate record for each device/browser combination. A complete report requires Edge, Chrome and Firefox on
+Windows; Safari, Chrome and Firefox on a Retina macOS laptop; Safari on two adjacent iOS major versions; and Android
+Chrome on both a phone and tablet. Windows coverage also requires a recorded 1920×1080 viewport, and every mobile
+record requires portrait and landscape evidence.
+
+Perform every check on the named physical device, save synthetic-only screenshots/video/logs beside its JSON record,
+and compute each evidence digest with:
+
+```bash
+npm run certify:device -- hash --file tmp/device-windows/dashboard.png
+```
+
+Fill the exact device, OS, browser, tester, release and evidence references. Set the record to `passed` only after all
+seven checks pass. The validator requires a full 40-character revision, HTTPS release URL, complete device/tester
+metadata, tested viewports/orientations, evidence for every check, dashboard/processing/offline evidence files,
+package-contained relative paths and matching SHA-256 values:
+
+```bash
+npm run certify:device -- validate --file tmp/device-windows/certification.json
+npm run certify:device -- report --input tmp --output .artifacts/operations/device-certification.json
+```
+
+A valid `pending` template is still pending, and the summary is complete only when all four platform families have a
+validated passed record. Emulator, Playwright and desktop responsive evidence must never be relabeled as physical.
