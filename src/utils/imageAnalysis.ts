@@ -72,7 +72,9 @@ export async function analyzeBestSettings(
 export async function getDominantAmbientColor(file: File | Blob): Promise<string> {
   const data = await getImageData(file, 1);
   if (!data) return 'transparent';
-  const r = data.data[0] ?? 0; const g = data.data[1] ?? 0; const b = data.data[2] ?? 0;
+  const r = data.data[0] ?? 0;
+  const g = data.data[1] ?? 0;
+  const b = data.data[2] ?? 0;
   return `rgb(${r} ${g} ${b})`;
 }
 
