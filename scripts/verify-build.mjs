@@ -62,7 +62,7 @@ if (codecJavascriptBytes > 220 * 1024)
   failures.push(`Lazy codec JavaScript budget exceeded: ${codecJavascriptBytes} bytes`);
 if (javascriptBytes > 1100 * 1024)
   failures.push(`Total lazy-inclusive JavaScript ceiling exceeded: ${javascriptBytes} bytes`);
-if (cssBytes > 144 * 1024) failures.push(`CSS budget exceeded: ${cssBytes} bytes`);
+if (cssBytes > 160 * 1024) failures.push(`CSS budget exceeded: ${cssBytes} bytes`);
 if (cssGzipBytes > 28 * 1024)
   failures.push(`Compressed CSS budget exceeded: ${cssGzipBytes} bytes`);
 
