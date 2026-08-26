@@ -20,7 +20,11 @@ const defaultSettings: ConversionSettings = {
   outputFormat: 'jpeg',
   quality: 88,
   background: '#ffffff',
-  namingPattern: '{name}-converted'
+  namingPattern: '{name}-converted',
+  autoProcess: false,
+  qualityMode: 'quality',
+  targetKb: 200,
+  stripMetadata: true
 };
 
 interface QueueResult {
@@ -45,6 +49,10 @@ export function useConversionQueue(
   const removedIdsRef = useRef(new Set<string>());
   const initialFilesConsumed = useRef(false);
   const mountedRef = useRef(true);
+  // Keep a stable ref for processReadyJobs so auto-process can call it without stale closure
+  const processReadyJobsRef = useRef<((ids?: ReadonlySet<string>) => Promise<QueueResult>) | null>(
+    null
+  );
 
   const commitJobs = useCallback(
     (updater: (current: readonly ConversionJob[]) => readonly ConversionJob[]) => {
@@ -65,7 +73,7 @@ export function useConversionQueue(
   );
 
   const validateJobs = useCallback(
-    async (entries: readonly ConversionJob[]) => {
+    async (entries: readonly ConversionJob[], autoProcessAfter: boolean) => {
       await mapWithConcurrency(entries, INTAKE_CONCURRENCY, async (entry) => {
         try {
           const validation = await validateImageFile(entry.file);
@@ -98,6 +106,12 @@ export function useConversionQueue(
           });
         }
       });
+
+      // Auto-process: trigger for the newly validated jobs that are ready
+      if (autoProcessAfter && mountedRef.current && processReadyJobsRef.current) {
+        const ids = new Set(entries.map((e) => e.id));
+        await processReadyJobsRef.current(ids);
+      }
     },
     [updateJob]
   );
@@ -116,11 +130,19 @@ export function useConversionQueue(
       }));
       if (entries.length === 0) return 0;
       commitJobs((current) => [...current, ...entries]);
-      void validateJobs(entries);
+      // Read autoProcess from settingsState via ref to avoid stale closures
+      const auto = settingsRef.current.autoProcess;
+      void validateJobs(entries, auto);
       return entries.length;
     },
     [commitJobs, validateJobs]
   );
+
+  // Keep a ref to current settings for use inside callbacks
+  const settingsRef = useRef(settings);
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
 
   useEffect(() => {
     if (initialFilesConsumed.current) return;
@@ -152,6 +174,7 @@ export function useConversionQueue(
   const setSettings = useCallback(
     (next: ConversionSettings, invalidate = true) => {
       setSettingsState(next);
+      settingsRef.current = next;
       if (invalidate) invalidateOutputs();
     },
     [invalidateOutputs]
@@ -161,6 +184,7 @@ export function useConversionQueue(
     (update: Partial<ConversionSettings>, invalidate = true) => {
       setSettingsState((current) => {
         const next = { ...current, ...update };
+        settingsRef.current = next;
         return next;
       });
       if (invalidate) invalidateOutputs();
@@ -194,6 +218,12 @@ export function useConversionQueue(
       });
 
       const outputFormat = job.formatOverride ?? settingsSnapshot.outputFormat;
+      // Resolve target bytes from targetKb when in target mode
+      const targetBytes =
+        settingsSnapshot.qualityMode === 'target' && outputFormat !== 'png'
+          ? settingsSnapshot.targetKb * 1024
+          : undefined;
+
       try {
         const result = await processNativeImage({
           file: job.file,
@@ -202,7 +232,11 @@ export function useConversionQueue(
           ...(job.validation.dimensions ? { dimensions: job.validation.dimensions } : {}),
           options: {
             outputFormat,
-            ...(outputFormat === 'png' ? {} : { quality: settingsSnapshot.quality / 100 }),
+            ...(outputFormat === 'png'
+              ? {}
+              : targetBytes
+                ? { targetBytes, minimumQuality: 20 / 100, maximumEncodingPasses: 12 }
+                : { quality: settingsSnapshot.quality / 100 }),
             ...(outputFormat === 'jpeg' ? { background: settingsSnapshot.background } : {})
           },
           signal: controller.signal,
@@ -253,14 +287,35 @@ export function useConversionQueue(
           job.validation?.supportedByConverter &&
           (job.status === 'ready' || job.status === 'failed' || job.status === 'cancelled')
       );
-      const settingsSnapshot = settings;
+      const settingsSnapshot = settingsRef.current;
       const results = await mapWithConcurrency(processable, MAX_DISPATCHED_JOBS, (job) =>
         processJob(job, settingsSnapshot)
       );
       const completed = results.filter(Boolean).length;
       return { attempted: processable.length, completed, failed: processable.length - completed };
     },
-    [processJob, settings]
+    [processJob]
+  );
+
+  // Keep processReadyJobsRef in sync for auto-process callback
+  useEffect(() => {
+    processReadyJobsRef.current = processReadyJobs;
+  }, [processReadyJobs]);
+
+  // Drag-to-reorder: swap two jobs by ID
+  const reorderJob = useCallback(
+    (fromId: string, toId: string) => {
+      commitJobs((current) => {
+        const fromIndex = current.findIndex((j) => j.id === fromId);
+        const toIndex = current.findIndex((j) => j.id === toId);
+        if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return current;
+        const next = [...current];
+        const [moved] = next.splice(fromIndex, 1);
+        if (moved) next.splice(toIndex, 0, moved);
+        return next;
+      });
+    },
+    [commitJobs]
   );
 
   const removeJob = useCallback(
@@ -328,6 +383,7 @@ export function useConversionQueue(
     updateSettings,
     setFormatOverride,
     processReadyJobs,
+    reorderJob,
     removeJob,
     removeSelected,
     clearCompleted,

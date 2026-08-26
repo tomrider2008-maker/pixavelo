@@ -10,7 +10,14 @@ import {
   Trash2,
   X
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type DragEvent
+} from 'react';
 import { useLocation } from 'react-router-dom';
 import { useNotifications } from '../../components/feedback/Notifications';
 import { createZipBlob } from '../../engine/export/createZip';
@@ -22,8 +29,9 @@ import { filesFromClipboardData, readClipboardImageFiles } from './clipboard';
 import { AdvancedFormatCapabilities } from './AdvancedFormatCapabilities';
 import { ConversionQueue } from './ConversionQueue';
 import { ConversionSettingsPanel } from './ConversionSettingsPanel';
+import { ConversionSummary } from './ConversionSummary';
 import { buildConversionFilename, deduplicateFilenames } from './naming';
-import type { ConversionJob, ConversionQueueFilter } from './types';
+import type { ConversionJob, ConversionQueueFilter, ConversionSortOrder } from './types';
 import { useConversionQueue } from './useConversionQueue';
 
 interface IntakeLocationState {
@@ -36,9 +44,11 @@ export default function ConverterPage() {
   const initialFiles = useMemo(() => getIntakeSession(state?.sessionId), [state?.sessionId]);
   const queue = useConversionQueue(initialFiles, readRequestedFormat());
   const [filter, setFilter] = useState<ConversionQueueFilter>('all');
+  const [sortOrder, setSortOrder] = useState<ConversionSortOrder>('insertion');
   const [dragging, setDragging] = useState(false);
   const [archiveBusy, setArchiveBusy] = useState(false);
   const [archiveProgress, setArchiveProgress] = useState<string>();
+  const [showSummary, setShowSummary] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const archiveControllerRef = useRef<AbortController | undefined>(undefined);
@@ -56,8 +66,19 @@ export default function ConverterPage() {
     []
   );
 
+  // Show summary when all jobs reach a terminal state
+  const allSettled =
+    queue.jobs.length > 0 &&
+    queue.jobs.every((j) =>
+      ['completed', 'failed', 'cancelled', 'unsupported'].includes(j.status)
+    );
+  useEffect(() => {
+    if (allSettled) setShowSummary(true);
+  }, [allSettled]);
+
   const addFiles = useCallback(
     (files: FileList | readonly File[], source: string) => {
+      setShowSummary(false);
       const requested = files.length;
       const count = enqueueFiles(files);
       if (count > 0) {
@@ -74,6 +95,20 @@ export default function ConverterPage() {
     [enqueueFiles, notify]
   );
 
+  // Ctrl+Enter → process all
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+        event.preventDefault();
+        void processAll();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Global paste handler
   useEffect(() => {
     const handlePaste = (event: ClipboardEvent) => {
       const target = event.target;
@@ -138,13 +173,15 @@ export default function ConverterPage() {
     });
   };
 
+  // Build output-aware filenames (includes {width}/{height} when output exists)
   const filenames = useMemo(() => {
     const raw = queue.jobs.map((job, index) =>
       buildConversionFilename(
         job.file.name,
         job.formatOverride ?? queue.settings.outputFormat,
         queue.settings.namingPattern,
-        index
+        index,
+        job.output ? { width: job.output.width, height: job.output.height } : undefined
       )
     );
     const unique = deduplicateFilenames(raw);
@@ -163,8 +200,45 @@ export default function ConverterPage() {
   const sourceTotal = queue.jobs.reduce((total, job) => total + job.file.size, 0);
   const outputTotal = completedJobs.reduce((total, job) => total + job.output.size, 0);
   const selectedCount = queue.jobs.filter((job) => job.selected).length;
-  const visibleJobs = queue.jobs.filter((job) => matchesFilter(job, filter));
   const allSelected = queue.jobs.length > 0 && selectedCount === queue.jobs.length;
+
+  // Per-format breakdown for footer
+  const formatBreakdown = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const job of completedJobs) {
+      const fmt = (job.formatOverride ?? queue.settings.outputFormat).toUpperCase();
+      counts.set(fmt, (counts.get(fmt) ?? 0) + 1);
+    }
+    return [...counts.entries()].map(([fmt, n]) => `${n} × ${fmt}`).join(' · ');
+  }, [completedJobs, queue.settings.outputFormat]);
+
+  // Sort jobs
+  const sortedJobs = useMemo(() => {
+    const all = [...queue.jobs];
+    if (sortOrder === 'name-asc') {
+      all.sort((a, b) => a.file.name.localeCompare(b.file.name));
+    } else if (sortOrder === 'size-desc') {
+      all.sort((a, b) => b.file.size - a.file.size);
+    } else if (sortOrder === 'format') {
+      all.sort((a, b) =>
+        (a.validation?.format ?? '').localeCompare(b.validation?.format ?? '')
+      );
+    } else if (sortOrder === 'status') {
+      const order: Record<string, number> = {
+        processing: 0,
+        validating: 1,
+        ready: 2,
+        completed: 3,
+        failed: 4,
+        cancelled: 5,
+        unsupported: 6
+      };
+      all.sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9));
+    }
+    return all;
+  }, [queue.jobs, sortOrder]);
+
+  const visibleJobs = sortedJobs.filter((job) => matchesFilter(job, filter));
 
   const downloadCompleted = async (requireSettled: boolean) => {
     if (completedJobs.length === 0) return;
@@ -323,6 +397,7 @@ export default function ConverterPage() {
           type="button"
           disabled={pending === 0 || processing}
           onClick={() => void processAll()}
+          title="Process all (Ctrl+Enter)"
         >
           {processing ? <LoaderCircle className="spin" size={18} /> : <Play size={18} />}
           Process all
@@ -343,45 +418,73 @@ export default function ConverterPage() {
             </button>
           ) : (
             <>
-              <div className="queue-filters" role="tablist" aria-label="Filter conversion queue">
-                <FilterButton
-                  id="all"
-                  label="All"
-                  count={queue.jobs.length}
-                  active={filter === 'all'}
-                  onSelect={setFilter}
+              {/* Session summary */}
+              {showSummary && allSettled && (
+                <ConversionSummary
+                  jobs={queue.jobs}
+                  onDismiss={() => setShowSummary(false)}
                 />
-                <FilterButton
-                  id="ready"
-                  label="Ready"
-                  count={counts.ready}
-                  active={filter === 'ready'}
-                  onSelect={setFilter}
-                />
-                <FilterButton
-                  id="active"
-                  label="Processing"
-                  count={counts.active}
-                  active={filter === 'active'}
-                  onSelect={setFilter}
-                />
-                <FilterButton
-                  id="completed"
-                  label="Completed"
-                  count={counts.completed}
-                  active={filter === 'completed'}
-                  onSelect={setFilter}
-                />
-                {counts.issues > 0 ? (
+              )}
+
+              {/* Filter tabs + sort control */}
+              <div className="queue-controls">
+                <div className="queue-filters" role="tablist" aria-label="Filter conversion queue">
                   <FilterButton
-                    id="issues"
-                    label="Issues"
-                    count={counts.issues}
-                    active={filter === 'issues'}
+                    id="all"
+                    label="All"
+                    count={queue.jobs.length}
+                    active={filter === 'all'}
                     onSelect={setFilter}
                   />
-                ) : null}
+                  <FilterButton
+                    id="ready"
+                    label="Ready"
+                    count={counts.ready}
+                    active={filter === 'ready'}
+                    onSelect={setFilter}
+                  />
+                  <FilterButton
+                    id="active"
+                    label="Processing"
+                    count={counts.active}
+                    active={filter === 'active'}
+                    onSelect={setFilter}
+                  />
+                  <FilterButton
+                    id="completed"
+                    label="Completed"
+                    count={counts.completed}
+                    active={filter === 'completed'}
+                    onSelect={setFilter}
+                  />
+                  {counts.issues > 0 ? (
+                    <FilterButton
+                      id="issues"
+                      label="Issues"
+                      count={counts.issues}
+                      active={filter === 'issues'}
+                      onSelect={setFilter}
+                    />
+                  ) : null}
+                </div>
+
+                {/* Sort control */}
+                <label className="queue-sort" htmlFor="queue-sort-select">
+                  <span className="sr-only">Sort by</span>
+                  <select
+                    id="queue-sort-select"
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.currentTarget.value as ConversionSortOrder)}
+                  >
+                    <option value="insertion">Order added</option>
+                    <option value="name-asc">Name A → Z</option>
+                    <option value="size-desc">Size (large first)</option>
+                    <option value="format">Format</option>
+                    <option value="status">Status</option>
+                  </select>
+                </label>
               </div>
+
               <ConversionQueue
                 jobs={visibleJobs}
                 allSelected={allSelected}
@@ -394,6 +497,7 @@ export default function ConverterPage() {
                 onCancel={queue.cancelJob}
                 onRetry={(job) => void retryJob(job)}
                 onRemove={queue.removeJob}
+                {...(sortOrder === 'insertion' ? { onReorder: queue.reorderJob } : {})}
               />
             </>
           )}
@@ -415,6 +519,9 @@ export default function ConverterPage() {
             </span>
             <span className="status-count status-count--active">{counts.active} processing</span>
             <span className="status-count status-count--ready">{counts.ready} ready</span>
+            {formatBreakdown ? (
+              <span className="converter-summary__format-breakdown">{formatBreakdown}</span>
+            ) : null}
           </div>
           <div className="converter-summary__size">
             <strong>{formatBytes(sourceTotal)}</strong>
@@ -509,7 +616,9 @@ function countStatuses(jobs: readonly ConversionJob[]) {
     ready: jobs.filter((job) => job.status === 'ready').length,
     active: jobs.filter((job) => job.status === 'processing').length,
     completed: jobs.filter((job) => job.status === 'completed').length,
-    issues: jobs.filter((job) => ['failed', 'unsupported', 'cancelled'].includes(job.status)).length
+    issues: jobs.filter((job) =>
+      ['failed', 'unsupported', 'cancelled'].includes(job.status)
+    ).length
   };
 }
 

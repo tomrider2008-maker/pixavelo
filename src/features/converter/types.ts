@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   CoreImageFormat,
   ImageFormat,
   ImageValidationReport,
@@ -10,6 +10,10 @@ export type ConversionJobStatus =
   'validating' | 'ready' | 'unsupported' | 'processing' | 'completed' | 'failed' | 'cancelled';
 
 export type ConversionQueueFilter = 'all' | 'ready' | 'active' | 'completed' | 'issues';
+
+export type ConversionSortOrder = 'insertion' | 'name-asc' | 'size-desc' | 'format' | 'status';
+
+export type QualityMode = 'quality' | 'target';
 
 export interface ConversionOutput extends ProcessedImage {
   readonly url: string;
@@ -34,4 +38,8 @@ export interface ConversionSettings {
   readonly quality: number;
   readonly background: string;
   readonly namingPattern: string;
+  readonly autoProcess: boolean;
+  readonly qualityMode: QualityMode;
+  readonly targetKb: number;
+  readonly stripMetadata: boolean;
 }

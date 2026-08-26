@@ -7,7 +7,11 @@ const balancedSettings = {
   outputFormat: 'jpeg' as const,
   quality: 88,
   background: '#ffffff',
-  namingPattern: '{name}-converted'
+  namingPattern: '{name}-converted',
+  autoProcess: false,
+  qualityMode: 'quality' as const,
+  targetKb: 200,
+  stripMetadata: true
 };
 
 describe('ConversionSettingsPanel', () => {
@@ -28,7 +32,11 @@ describe('ConversionSettingsPanel', () => {
       outputFormat: 'webp',
       quality: 82,
       background: '#ffffff',
-      namingPattern: '{name}-web'
+      namingPattern: '{name}-web',
+      autoProcess: false,
+      qualityMode: 'quality',
+      targetKb: 200,
+      stripMetadata: true
     });
   });
 

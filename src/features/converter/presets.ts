@@ -1,6 +1,11 @@
-import type { ConversionSettings } from './types';
+﻿import type { ConversionSettings } from './types';
 
-export type ConversionPresetId = 'balanced-jpeg' | 'web-delivery' | 'lossless-png' | 'custom';
+export type ConversionPresetId =
+  | 'balanced-jpeg'
+  | 'web-delivery'
+  | 'lossless-png'
+  | 'max-compat'
+  | 'custom';
 
 export interface ConversionPreset {
   readonly id: Exclude<ConversionPresetId, 'custom'>;
@@ -16,7 +21,11 @@ export const conversionPresets: readonly ConversionPreset[] = [
       outputFormat: 'jpeg',
       quality: 88,
       background: '#ffffff',
-      namingPattern: '{name}-converted'
+      namingPattern: '{name}-converted',
+      autoProcess: false,
+      qualityMode: 'quality',
+      targetKb: 200,
+      stripMetadata: true
     }
   },
   {
@@ -26,7 +35,11 @@ export const conversionPresets: readonly ConversionPreset[] = [
       outputFormat: 'webp',
       quality: 82,
       background: '#ffffff',
-      namingPattern: '{name}-web'
+      namingPattern: '{name}-web',
+      autoProcess: false,
+      qualityMode: 'quality',
+      targetKb: 200,
+      stripMetadata: true
     }
   },
   {
@@ -36,7 +49,25 @@ export const conversionPresets: readonly ConversionPreset[] = [
       outputFormat: 'png',
       quality: 100,
       background: '#ffffff',
-      namingPattern: '{name}-converted'
+      namingPattern: '{name}-converted',
+      autoProcess: false,
+      qualityMode: 'quality',
+      targetKb: 200,
+      stripMetadata: true
+    }
+  },
+  {
+    id: 'max-compat',
+    label: 'Max compatibility JPEG',
+    settings: {
+      outputFormat: 'jpeg',
+      quality: 92,
+      background: '#ffffff',
+      namingPattern: '{name}-compat',
+      autoProcess: false,
+      qualityMode: 'quality',
+      targetKb: 200,
+      stripMetadata: false
     }
   }
 ] as const;
@@ -57,6 +88,10 @@ function settingsEqual(left: ConversionSettings, right: ConversionSettings) {
     left.outputFormat === right.outputFormat &&
     left.quality === right.quality &&
     left.background.toLowerCase() === right.background.toLowerCase() &&
-    left.namingPattern === right.namingPattern
+    left.namingPattern === right.namingPattern &&
+    left.autoProcess === right.autoProcess &&
+    left.qualityMode === right.qualityMode &&
+    left.targetKb === right.targetKb &&
+    left.stripMetadata === right.stripMetadata
   );
 }
