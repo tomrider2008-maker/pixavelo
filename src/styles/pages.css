@@ -2224,24 +2224,6 @@
   top: 16px;
 }
 
-.phase5-resize-workspace {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 306px;
-  align-items: start;
-  gap: 22px;
-}
-
-.phase5-resize-main {
-  min-width: 0;
-}
-
-.preset-browser {
-  overflow: hidden;
-  margin-top: 14px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-}
-
 .preset-category-tabs {
   display: grid;
   grid-template-columns: repeat(3, minmax(90px, 1fr));
@@ -2347,16 +2329,6 @@
 .preset-guidance-date {
   display: block;
   padding: 0 14px 10px;
-}
-
-.phase5-resize-canvas-column {
-  margin-top: 12px;
-}
-
-.phase5-transform-inspector {
-  position: sticky;
-  top: 16px;
-  margin-top: 0;
 }
 
 .fit-mode-options {

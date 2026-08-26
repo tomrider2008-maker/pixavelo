@@ -298,7 +298,7 @@ test('resize and rotation produce verified requested PNG dimensions', async ({ p
   await expect(page.getByText('20 × 30', { exact: true }).first()).toBeVisible();
   await page.getByRole('button', { name: 'Apply resize' }).click();
 
-  const downloadLink = page.getByRole('link', { name: 'Download resized image' });
+  const downloadLink = page.getByRole('link', { name: 'Download image' });
   await expect(downloadLink).toBeVisible({ timeout: 20_000 });
   const downloadPromise = page.waitForEvent('download');
   await downloadLink.click();

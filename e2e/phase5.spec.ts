@@ -97,7 +97,7 @@ test('Phase 5 social preset produces its exact verified output canvas locally', 
   await expect(page.getByText('1080 × 1350', { exact: true }).first()).toBeVisible();
   await page.getByRole('button', { name: 'Apply resize' }).click();
 
-  const outputLink = page.getByRole('link', { name: 'Download resized image' });
+  const outputLink = page.getByRole('link', { name: 'Download image' });
   await expect(outputLink).toBeVisible({ timeout: 40_000 });
   await expect(page.getByText('Output decoded and verified')).toBeVisible();
   const downloadPromise = page.waitForEvent('download');

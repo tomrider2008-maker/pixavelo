@@ -8,8 +8,7 @@ export async function calculateVisualFidelity(sourceBlob: Blob, outputBlob: Blob
 
   if (
     !sourceData ||
-    !outputData ||
-    sourceData.width !== outputData.width ||
+    sourceData.width !== outputData?.width ||
     sourceData.height !== outputData.height
   ) {
     return 100;
@@ -70,12 +69,23 @@ export async function analyzeBestSettings(
 }
 
 export async function getDominantAmbientColor(file: File | Blob): Promise<string> {
-  const data = await getImageData(file, 1);
+  const data = await getImageData(file, 8);
   if (!data) return 'transparent';
-  const r = data.data[0] ?? 0;
-  const g = data.data[1] ?? 0;
-  const b = data.data[2] ?? 0;
-  return `rgb(${r} ${g} ${b})`;
+  let red = 0;
+  let green = 0;
+  let blue = 0;
+  let samples = 0;
+
+  for (let index = 0; index < data.data.length; index += 16) {
+    const alpha = (data.data[index + 3] ?? 255) / 255;
+    red += (data.data[index] ?? 0) * alpha;
+    green += (data.data[index + 1] ?? 0) * alpha;
+    blue += (data.data[index + 2] ?? 0) * alpha;
+    samples += alpha;
+  }
+
+  if (samples === 0) return 'transparent';
+  return `rgb(${Math.round(red / samples)} ${Math.round(green / samples)} ${Math.round(blue / samples)})`;
 }
 
 async function getImageData(blob: Blob, maxSize: number): Promise<ImageData | undefined> {

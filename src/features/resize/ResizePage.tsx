@@ -1,16 +1,25 @@
 import {
   Check,
+  Crop,
   Download,
   ExternalLink,
+  FlipHorizontal2,
+  FlipVertical2,
+  Focus,
+  Hand,
   Link,
   Link2Off,
   LoaderCircle,
+  Maximize2,
+  Minus,
+  Plus,
   RotateCcw,
+  RotateCw,
   ShieldCheck,
   WandSparkles,
   X
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useNotifications } from '../../components/feedback/Notifications';
 import { resolveTransformGeometry } from '../../engine/pipeline/geometry';
 import type { CoreImageFormat, ImageCrop, ImageRotation } from '../../types/images';
@@ -21,6 +30,8 @@ import { resolveOutputFormat, useImageTool } from '../tools/useImageTool';
 import { CropPreview } from './CropPreview';
 import { clampCrop, fitCropToAspect } from './cropMath';
 import { clampDimension, resolveResizeDimensions } from './resizeMath';
+import { calculateSmartTrim } from './trimAnalysis';
+import { getDominantAmbientColor } from '../../utils/imageAnalysis';
 import {
   ASPECT_RATIOS,
   SOCIAL_PLATFORMS,
@@ -36,6 +47,8 @@ import {
 } from './resizeProfiles';
 
 type OutputChoice = CoreImageFormat | 'keep';
+type CanvasMode = 'crop' | 'move';
+type PreviewMode = 'source' | 'output';
 
 const stageLabels = {
   preparing: 'Preparing locally',
@@ -70,6 +83,7 @@ export default function ResizePage() {
   const requestedPreset = readResizePreset();
   const tool = useImageTool();
   const { notify } = useNotifications();
+  const [ambientColor, setAmbientColor] = useState<string>('transparent');
   const [crop, setCrop] = useState<ImageCrop>({ x: 0, y: 0, width: 1, height: 1 });
   const [width, setWidth] = useState(1);
   const [height, setHeight] = useState(1);
@@ -82,6 +96,12 @@ export default function ResizePage() {
   const [customAspectWidth, setCustomAspectWidth] = useState(3);
   const [customAspectHeight, setCustomAspectHeight] = useState(2);
   const [rotation, setRotation] = useState<ImageRotation>(0);
+  const [flipHorizontal, setFlipHorizontal] = useState(false);
+  const [flipVertical, setFlipVertical] = useState(false);
+  const [canvasMode, setCanvasMode] = useState<CanvasMode>('crop');
+  const [previewMode, setPreviewMode] = useState<PreviewMode>('source');
+  const [zoom, setZoom] = useState(100);
+  const [smartTrimBusy, setSmartTrimBusy] = useState(false);
   const [format, setFormat] = useState<OutputChoice>('keep');
   const [quality, setQuality] = useState(88);
   const [background, setBackground] = useState('#ffffff');
@@ -97,6 +117,19 @@ export default function ResizePage() {
   const outputFormat = resolveOutputFormat(format, tool.validation);
   const previewSourceUrl = canPreviewOriginal(tool.validation?.format) ? tool.sourceUrl : undefined;
   const socialPresets = presetsForPlatform(platform);
+
+  const isProcessing = tool.status === 'processing' || tool.status === 'live-processing';
+  const canProcess = Boolean(tool.validation?.supportedByConverter) && !isProcessing;
+
+  useEffect(() => {
+    if (tool.file) {
+      getDominantAmbientColor(tool.file)
+        .then(setAmbientColor)
+        .catch(() => undefined);
+    } else {
+      queueMicrotask(() => setAmbientColor('transparent'));
+    }
+  }, [tool.file]);
   const selectedSocialPreset =
     SOCIAL_PRESETS.find((preset) => preset.id === socialPresetId) ?? socialPresets[0];
   const selectedWebPreset =
@@ -116,6 +149,11 @@ export default function ResizePage() {
     setPreventUpscale(true);
     setAspect('original');
     setRotation(0);
+    setFlipHorizontal(false);
+    setFlipVertical(false);
+    setCanvasMode('crop');
+    setPreviewMode('source');
+    setZoom(100);
     setFormat('keep');
     setQuality(88);
     setFitMode('contain');
@@ -168,6 +206,7 @@ export default function ResizePage() {
 
   const markCustom = () => {
     tool.discardOutput();
+    setPreviewMode('source');
     setPresetCategory('custom');
     setActivePreset('custom');
   };
@@ -215,6 +254,7 @@ export default function ResizePage() {
     readonly fit: ImageFitMode;
   }) => {
     tool.discardOutput();
+    setPreviewMode('source');
     setWidth(preset.width);
     setHeight(preset.height);
     setResizeMethod('exact');
@@ -296,6 +336,51 @@ export default function ResizePage() {
     initializeTransform(sourceWidth, sourceHeight);
   };
 
+  const applySmartTrim = async () => {
+    if (!tool.file || smartTrimBusy) return;
+    setSmartTrimBusy(true);
+    try {
+      const nextCrop = await calculateSmartTrim(tool.file);
+      setManualCrop(nextCrop);
+      notify({
+        title: 'Smart trim ready',
+        message: `${nextCrop.width} × ${nextCrop.height} content bounds detected locally.`,
+        tone: 'success'
+      });
+    } catch {
+      notify({
+        title: 'Smart trim unavailable',
+        message: 'Pixavelo could not identify a reliable background boundary for this image.',
+        tone: 'error'
+      });
+    } finally {
+      setSmartTrimBusy(false);
+    }
+  };
+
+  const rotateBy = (degrees: number) => {
+    markCustom();
+    setRotation((current) => (current + degrees + 360) % 360);
+  };
+
+  const toggleFlip = (axis: 'horizontal' | 'vertical') => {
+    markCustom();
+    if (axis === 'horizontal') setFlipHorizontal((current) => !current);
+    else setFlipVertical((current) => !current);
+  };
+
+  const centerCrop = () => {
+    setManualCrop({
+      ...crop,
+      x: Math.round((sourceWidth - crop.width) / 2),
+      y: Math.round((sourceHeight - crop.height) / 2)
+    });
+  };
+
+  const changeZoom = (nextZoom: number) => {
+    setZoom(Math.max(25, Math.min(200, nextZoom)));
+  };
+
   const applyTransform = async () => {
     const result = await tool.process(
       {
@@ -305,6 +390,8 @@ export default function ResizePage() {
         height: requestedDimensions.height,
         fitMode,
         rotation,
+        flipHorizontal,
+        flipVertical,
         preventUpscale,
         ...(outputFormat === 'png' ? {} : { quality: quality / 100 }),
         ...(outputFormat === 'jpeg' || fitMode === 'pad' ? { background } : {})
@@ -312,6 +399,7 @@ export default function ResizePage() {
       'resized'
     );
     if (!result) return;
+    setPreviewMode('output');
     notify({
       title: 'Resize complete',
       message: `${result.width} × ${result.height} ${result.mime.replace('image/', '').toUpperCase()} verified locally.`,
@@ -319,10 +407,11 @@ export default function ResizePage() {
     });
   };
 
-  const canProcess = Boolean(tool.validation?.supportedByConverter) && tool.status !== 'processing';
-
   return (
-    <section className="converter-page tool-page resize-page phase5-resize-page">
+    <section
+      className="converter-page tool-page resize-page phase5-resize-page"
+      style={{ '--ambient-color': ambientColor } as CSSProperties}
+    >
       <header className="workspace-header">
         <div>
           <h1>Resize &amp; transform</h1>
@@ -469,27 +558,122 @@ export default function ResizePage() {
             </section>
 
             <div className="resize-canvas-column phase5-resize-canvas-column">
-              <CropPreview
-                {...(previewSourceUrl ? { sourceUrl: previewSourceUrl } : {})}
-                {...(tool.output ? { outputUrl: tool.output.url } : {})}
-                sourceWidth={sourceWidth}
-                sourceHeight={sourceHeight}
-                crop={crop}
-                onChange={setManualCrop}
-                onManualCrop={() => {
-                  markCustom();
-                  setFitMode('crop');
-                }}
-              />
-              <div className="resize-canvas-meta">
-                <span>
-                  {tool.output
-                    ? 'Verified output'
-                    : `${FIT_LABELS[fitMode]} fit · drag crop handles when needed`}
+              <div className="resize-stage-toolbar" role="toolbar" aria-label="Canvas tools">
+                <button
+                  type="button"
+                  aria-pressed={canvasMode === 'crop'}
+                  onClick={() => setCanvasMode('crop')}
+                >
+                  <Crop size={16} aria-hidden="true" /> Crop
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={canvasMode === 'move'}
+                  onClick={() => setCanvasMode('move')}
+                >
+                  <Hand size={16} aria-hidden="true" /> Move
+                </button>
+                <span className="resize-stage-toolbar__divider" aria-hidden="true" />
+                <button type="button" aria-label="Rotate left" onClick={() => rotateBy(-90)}>
+                  <RotateCcw size={16} aria-hidden="true" />
+                </button>
+                <button type="button" aria-label="Rotate right" onClick={() => rotateBy(90)}>
+                  <RotateCw size={16} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Flip horizontally"
+                  aria-pressed={flipHorizontal}
+                  onClick={() => toggleFlip('horizontal')}
+                >
+                  <FlipHorizontal2 size={16} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Flip vertically"
+                  aria-pressed={flipVertical}
+                  onClick={() => toggleFlip('vertical')}
+                >
+                  <FlipVertical2 size={16} aria-hidden="true" />
+                </button>
+                <button type="button" onClick={centerCrop}>
+                  <Focus size={16} aria-hidden="true" /> Center
+                </button>
+                <button type="button" onClick={reset}>
+                  <RotateCcw size={16} aria-hidden="true" /> Reset
+                </button>
+              </div>
+
+              <div className="resize-stage__viewport">
+                <div className="resize-stage__zoom" style={{ width: `${zoom}%` }}>
+                  <CropPreview
+                    {...(previewSourceUrl ? { sourceUrl: previewSourceUrl } : {})}
+                    {...(tool.output && previewMode === 'output'
+                      ? { outputUrl: tool.output.url }
+                      : {})}
+                    sourceWidth={sourceWidth}
+                    sourceHeight={sourceHeight}
+                    crop={crop}
+                    interactionMode={canvasMode}
+                    onChange={setManualCrop}
+                    onManualCrop={() => {
+                      markCustom();
+                      setFitMode('crop');
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="resize-stage-footer">
+                <div className="resize-zoom-controls" aria-label="Preview zoom">
+                  <button type="button" aria-label="Zoom out" onClick={() => changeZoom(zoom - 25)}>
+                    <Minus size={15} aria-hidden="true" />
+                  </button>
+                  <span>{zoom}%</span>
+                  <button type="button" aria-label="Zoom in" onClick={() => changeZoom(zoom + 25)}>
+                    <Plus size={15} aria-hidden="true" />
+                  </button>
+                </div>
+                <div className="resize-preview-toggle" role="group" aria-label="Preview mode">
+                  <button
+                    type="button"
+                    aria-pressed={previewMode === 'source'}
+                    onClick={() => setPreviewMode('source')}
+                  >
+                    Before
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={previewMode === 'output'}
+                    disabled={!tool.output}
+                    onClick={() => setPreviewMode('output')}
+                  >
+                    Output
+                  </button>
+                </div>
+              </div>
+
+              <div className="resize-output-strip">
+                <span className={tool.output ? 'is-ready' : ''}>
+                  {tool.output ? <Check size={14} aria-hidden="true" /> : <Maximize2 size={14} />}
+                  {tool.output ? 'Verified locally' : 'Ready to apply'}
                 </span>
-                <strong>
-                  {geometry.outputWidth} × {geometry.outputHeight}
-                </strong>
+                <dl>
+                  <div>
+                    <dt>Output</dt>
+                    <dd>
+                      {geometry.outputWidth} × {geometry.outputHeight}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Format</dt>
+                    <dd>{outputFormat.toUpperCase()}</dd>
+                  </div>
+                  <div>
+                    <dt>Fit</dt>
+                    <dd>{FIT_LABELS[fitMode]}</dd>
+                  </div>
+                </dl>
               </div>
             </div>
           </div>
@@ -498,259 +682,308 @@ export default function ResizePage() {
             className="transform-inspector phase5-transform-inspector"
             aria-label="Resize settings"
           >
-            <fieldset>
-              <legend>Resize method</legend>
-              <label className="control-field">
-                <span>Method</span>
-                <select
-                  value={resizeMethod}
-                  onChange={(event) => {
-                    markCustom();
-                    setResizeMethod(event.currentTarget.value as ResizeMethod);
-                  }}
+            <div className="resize-settings-panel">
+              <div className="resize-panel-heading">
+                <div>
+                  <span className="resize-panel-heading__eyebrow">Transform</span>
+                  <h2>Size &amp; crop</h2>
+                </div>
+                <button
+                  type="button"
+                  className="smart-trim-button"
+                  onClick={() => void applySmartTrim()}
+                  disabled={smartTrimBusy}
                 >
-                  {(Object.entries(RESIZE_METHOD_LABELS) as readonly [ResizeMethod, string][]).map(
-                    ([value, label]) => (
+                  {smartTrimBusy ? (
+                    <LoaderCircle className="spin" size={15} aria-hidden="true" />
+                  ) : (
+                    <WandSparkles size={15} aria-hidden="true" />
+                  )}
+                  {smartTrimBusy ? 'Scanning' : 'Smart trim'}
+                </button>
+              </div>
+              <fieldset>
+                <legend>Resize method</legend>
+                <label className="control-field">
+                  <span>Method</span>
+                  <select
+                    value={resizeMethod}
+                    onChange={(event) => {
+                      markCustom();
+                      setResizeMethod(event.currentTarget.value as ResizeMethod);
+                    }}
+                  >
+                    {(
+                      Object.entries(RESIZE_METHOD_LABELS) as readonly [ResizeMethod, string][]
+                    ).map(([value, label]) => (
                       <option key={value} value={value}>
                         {label}
                       </option>
+                    ))}
+                  </select>
+                </label>
+                <ResizeMethodFields
+                  method={resizeMethod}
+                  width={width}
+                  height={height}
+                  percentage={percentage}
+                  edge={edge}
+                  megapixels={megapixels}
+                  linked={dimensionsLinked}
+                  onWidth={changeWidth}
+                  onHeight={changeHeight}
+                  onPercentage={(value) => {
+                    markCustom();
+                    setPercentage(Math.max(1, Math.min(800, value)));
+                  }}
+                  onEdge={(value) => {
+                    markCustom();
+                    setEdge(clampDimension(value));
+                  }}
+                  onMegapixels={(value) => {
+                    markCustom();
+                    setMegapixels(Math.max(0.01, Math.min(120, value)));
+                  }}
+                  onToggleLink={() => setDimensionsLinked((current) => !current)}
+                />
+                <label className="check-field">
+                  <input
+                    type="checkbox"
+                    checked={preventUpscale}
+                    onChange={(event) => {
+                      markCustom();
+                      setPreventUpscale(event.currentTarget.checked);
+                    }}
+                  />
+                  Prevent upscaling
+                </label>
+              </fieldset>
+
+              <fieldset>
+                <legend>Fit</legend>
+                <div className="fit-mode-options">
+                  {(Object.entries(FIT_LABELS) as readonly [ImageFitMode, string][]).map(
+                    ([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        aria-pressed={fitMode === value}
+                        onClick={() => {
+                          markCustom();
+                          setFitMode(value);
+                        }}
+                      >
+                        {label}
+                      </button>
                     )
                   )}
-                </select>
-              </label>
-              <ResizeMethodFields
-                method={resizeMethod}
-                width={width}
-                height={height}
-                percentage={percentage}
-                edge={edge}
-                megapixels={megapixels}
-                linked={dimensionsLinked}
-                onWidth={changeWidth}
-                onHeight={changeHeight}
-                onPercentage={(value) => {
-                  markCustom();
-                  setPercentage(Math.max(1, Math.min(800, value)));
-                }}
-                onEdge={(value) => {
-                  markCustom();
-                  setEdge(clampDimension(value));
-                }}
-                onMegapixels={(value) => {
-                  markCustom();
-                  setMegapixels(Math.max(0.01, Math.min(120, value)));
-                }}
-                onToggleLink={() => setDimensionsLinked((current) => !current)}
-              />
-              <label className="check-field">
-                <input
-                  type="checkbox"
-                  checked={preventUpscale}
-                  onChange={(event) => {
-                    tool.discardOutput();
-                    setPreventUpscale(event.currentTarget.checked);
-                  }}
-                />
-                Prevent upscaling
-              </label>
-            </fieldset>
+                </div>
+                <label className="control-field">
+                  <span>Aspect ratio</span>
+                  <select
+                    value={aspect}
+                    onChange={(event) => changeAspect(event.currentTarget.value as AspectRatioId)}
+                  >
+                    <option value="original">Original</option>
+                    {Object.keys(ASPECT_RATIOS).map((ratio) => (
+                      <option key={ratio} value={ratio}>
+                        {ratio}
+                      </option>
+                    ))}
+                    <option value="custom">Custom</option>
+                  </select>
+                </label>
+                {aspect === 'custom' ? (
+                  <div className="custom-aspect-row">
+                    <UnitInput
+                      label="Ratio width"
+                      value={customAspectWidth}
+                      unit=""
+                      onChange={(value) => {
+                        setCustomAspectWidth(value);
+                        changeAspect('custom', value, customAspectHeight);
+                      }}
+                    />
+                    <span>:</span>
+                    <UnitInput
+                      label="Ratio height"
+                      value={customAspectHeight}
+                      unit=""
+                      onChange={(value) => {
+                        setCustomAspectHeight(value);
+                        changeAspect('custom', customAspectWidth, value);
+                      }}
+                    />
+                  </div>
+                ) : null}
+              </fieldset>
 
-            <fieldset>
-              <legend>Fit</legend>
-              <div className="fit-mode-options">
-                {(Object.entries(FIT_LABELS) as readonly [ImageFitMode, string][]).map(
-                  ([value, label]) => (
+              <fieldset>
+                <legend>Orientation</legend>
+                <div className="rotation-options">
+                  {([0, 90, 180, 270] as const).map((value) => (
                     <button
                       key={value}
                       type="button"
-                      aria-pressed={fitMode === value}
+                      aria-pressed={rotation === value}
                       onClick={() => {
                         markCustom();
-                        setFitMode(value);
+                        setRotation(value);
                       }}
                     >
-                      {label}
+                      <RotateCcw size={14} aria-hidden="true" /> {value}°
                     </button>
-                  )
-                )}
-              </div>
-              <label className="control-field">
-                <span>Aspect ratio</span>
-                <select
-                  value={aspect}
-                  onChange={(event) => changeAspect(event.currentTarget.value as AspectRatioId)}
-                >
-                  <option value="original">Original</option>
-                  {Object.keys(ASPECT_RATIOS).map((ratio) => (
-                    <option key={ratio} value={ratio}>
-                      {ratio}
-                    </option>
                   ))}
-                  <option value="custom">Custom</option>
-                </select>
-              </label>
-              {aspect === 'custom' ? (
-                <div className="custom-aspect-row">
-                  <UnitInput
-                    label="Ratio width"
-                    value={customAspectWidth}
-                    unit=""
-                    onChange={(value) => {
-                      setCustomAspectWidth(value);
-                      changeAspect('custom', value, customAspectHeight);
-                    }}
-                  />
-                  <span>:</span>
-                  <UnitInput
-                    label="Ratio height"
-                    value={customAspectHeight}
-                    unit=""
-                    onChange={(value) => {
-                      setCustomAspectHeight(value);
-                      changeAspect('custom', customAspectWidth, value);
-                    }}
-                  />
                 </div>
-              ) : null}
-            </fieldset>
-
-            <fieldset>
-              <legend>Rotate</legend>
-              <div className="rotation-options">
-                {([0, 90, 180, 270] as const).map((value) => (
+                <div className="flip-options">
                   <button
-                    key={value}
                     type="button"
-                    aria-pressed={rotation === value}
-                    onClick={() => {
+                    aria-pressed={flipHorizontal}
+                    onClick={() => toggleFlip('horizontal')}
+                  >
+                    <FlipHorizontal2 size={14} aria-hidden="true" /> Horizontal
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={flipVertical}
+                    onClick={() => toggleFlip('vertical')}
+                  >
+                    <FlipVertical2 size={14} aria-hidden="true" /> Vertical
+                  </button>
+                </div>
+              </fieldset>
+            </div>
+
+            <div className="resize-export-panel">
+              <div className="resize-panel-heading">
+                <div>
+                  <span className="resize-panel-heading__eyebrow">Delivery</span>
+                  <h2>Export</h2>
+                </div>
+                <ShieldCheck size={20} aria-label="Local processing" />
+              </div>
+              <fieldset>
+                <legend>Output</legend>
+                <label className="control-field">
+                  <span>Format</span>
+                  <select
+                    value={format}
+                    onChange={(event) => {
                       tool.discardOutput();
-                      setRotation(value);
+                      setPreviewMode('source');
+                      setFormat(event.currentTarget.value as OutputChoice);
                     }}
                   >
-                    <RotateCcw size={14} aria-hidden="true" /> {value}°
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-
-            <fieldset>
-              <legend>Output</legend>
-              <label className="control-field">
-                <span>Format</span>
-                <select
-                  value={format}
-                  onChange={(event) => {
-                    tool.discardOutput();
-                    setFormat(event.currentTarget.value as OutputChoice);
-                  }}
-                >
-                  <option value="keep">Automatic ({outputFormat.toUpperCase()})</option>
-                  <option value="jpeg">JPEG</option>
-                  <option value="png">PNG</option>
-                  <option value="webp">WebP</option>
-                </select>
-              </label>
-              <label className="range-field resize-quality-field">
-                <span>
-                  Quality <output>{quality}</output>
-                </span>
-                <input
-                  type="range"
-                  min="20"
-                  max="100"
-                  value={quality}
-                  disabled={outputFormat === 'png'}
-                  onChange={(event) => {
-                    tool.discardOutput();
-                    setQuality(event.currentTarget.valueAsNumber);
-                  }}
-                />
-              </label>
-              <label className="control-field background-field">
-                <span>Background {fitMode === 'pad' ? '' : '(Pad only)'}</span>
-                <input
-                  type="color"
-                  value={background}
-                  disabled={fitMode !== 'pad' && outputFormat !== 'jpeg'}
-                  onChange={(event) => {
-                    tool.discardOutput();
-                    setBackground(event.currentTarget.value);
-                  }}
-                />
-              </label>
-              <dl className="output-inline-summary">
-                <div>
-                  <dt>Output</dt>
-                  <dd>
-                    {geometry.outputWidth} × {geometry.outputHeight}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Megapixels</dt>
-                  <dd>
-                    {((geometry.outputWidth * geometry.outputHeight) / 1_000_000).toFixed(2)} MP
-                  </dd>
-                </div>
-                <div>
-                  <dt>Format</dt>
-                  <dd>{outputFormat.toUpperCase()}</dd>
-                </div>
-                {tool.output ? (
+                    <option value="keep">Automatic ({outputFormat.toUpperCase()})</option>
+                    <option value="jpeg">JPEG</option>
+                    <option value="png">PNG</option>
+                    <option value="webp">WebP</option>
+                  </select>
+                </label>
+                <label className="range-field resize-quality-field">
+                  <span>
+                    Quality <output>{quality}</output>
+                  </span>
+                  <input
+                    type="range"
+                    min="20"
+                    max="100"
+                    value={quality}
+                    disabled={outputFormat === 'png'}
+                    onChange={(event) => {
+                      tool.discardOutput();
+                      setPreviewMode('source');
+                      setQuality(event.currentTarget.valueAsNumber);
+                    }}
+                  />
+                </label>
+                <label className="control-field background-field">
+                  <span>Background {fitMode === 'pad' ? '' : '(Pad only)'}</span>
+                  <input
+                    type="color"
+                    value={background}
+                    disabled={fitMode !== 'pad' && outputFormat !== 'jpeg'}
+                    onChange={(event) => {
+                      tool.discardOutput();
+                      setPreviewMode('source');
+                      setBackground(event.currentTarget.value);
+                    }}
+                  />
+                </label>
+                <dl className="output-inline-summary">
                   <div>
-                    <dt>Size</dt>
-                    <dd>{formatBytes(tool.output.size)}</dd>
+                    <dt>Output</dt>
+                    <dd>
+                      {geometry.outputWidth} × {geometry.outputHeight}
+                    </dd>
                   </div>
-                ) : null}
-              </dl>
-            </fieldset>
+                  <div>
+                    <dt>Megapixels</dt>
+                    <dd>
+                      {((geometry.outputWidth * geometry.outputHeight) / 1_000_000).toFixed(2)} MP
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Format</dt>
+                    <dd>{outputFormat.toUpperCase()}</dd>
+                  </div>
+                  {tool.output ? (
+                    <div>
+                      <dt>Size</dt>
+                      <dd>{formatBytes(tool.output.size)}</dd>
+                    </div>
+                  ) : null}
+                </dl>
+              </fieldset>
 
-            {tool.status === 'processing' ? (
-              <div className="processing-line" role="status" aria-live="polite">
-                <LoaderCircle className="spin" size={17} aria-hidden="true" />
-                {tool.stage ? stageLabels[tool.stage] : 'Processing'}
-              </div>
-            ) : null}
-
-            {tool.output ? (
-              <>
-                <div className="verified-line">
-                  <Check size={15} aria-hidden="true" /> Output decoded and verified
+              {isProcessing ? (
+                <div className="processing-line" role="status" aria-live="polite">
+                  <LoaderCircle className="spin" size={17} aria-hidden="true" />
+                  {tool.stage ? stageLabels[tool.stage] : 'Processing'}
                 </div>
-                <a
+              ) : null}
+
+              {tool.output ? (
+                <>
+                  <div className="verified-line">
+                    <Check size={15} aria-hidden="true" /> Output decoded and verified
+                  </div>
+                  <a
+                    className="button button--primary"
+                    href={tool.output.url}
+                    download={tool.output.filename}
+                  >
+                    <Download size={17} aria-hidden="true" /> Download image
+                  </a>
+                </>
+              ) : (
+                <button
                   className="button button--primary"
-                  href={tool.output.url}
-                  download={tool.output.filename}
+                  type="button"
+                  disabled={!canProcess}
+                  onClick={() => void applyTransform()}
                 >
-                  <Download size={17} aria-hidden="true" /> Download resized image
-                </a>
-              </>
-            ) : (
-              <button
-                className="button button--primary"
-                type="button"
-                disabled={!canProcess}
-                onClick={() => void applyTransform()}
-              >
-                <WandSparkles size={17} aria-hidden="true" /> Apply resize
-              </button>
-            )}
+                  <WandSparkles size={17} aria-hidden="true" /> Apply resize
+                </button>
+              )}
 
-            {tool.status === 'processing' ? (
-              <button className="button button--secondary" type="button" onClick={tool.cancel}>
-                <X size={17} aria-hidden="true" /> Cancel
-              </button>
-            ) : (
-              <button className="button button--secondary" type="button" onClick={reset}>
-                <RotateCcw size={17} aria-hidden="true" /> Reset
-              </button>
-            )}
+              {isProcessing ? (
+                <button className="button button--secondary" type="button" onClick={tool.cancel}>
+                  <X size={17} aria-hidden="true" /> Cancel
+                </button>
+              ) : (
+                <button className="button button--secondary" type="button" onClick={reset}>
+                  <RotateCcw size={17} aria-hidden="true" /> Reset
+                </button>
+              )}
 
-            <div className="tool-summary__privacy tool-summary__privacy--compact">
-              <ShieldCheck size={17} aria-hidden="true" />
-              <span>
-                <strong>Processed entirely on this device</strong>
-                <small>No upload or remote API.</small>
-              </span>
+              <div className="tool-summary__privacy tool-summary__privacy--compact">
+                <ShieldCheck size={17} aria-hidden="true" />
+                <span>
+                  <strong>Processed entirely on this device</strong>
+                  <small>No upload or remote API.</small>
+                </span>
+              </div>
             </div>
           </aside>
         </div>

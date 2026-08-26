@@ -10,6 +10,7 @@ interface CropPreviewProps {
   readonly crop: ImageCrop;
   readonly onChange: (crop: ImageCrop) => void;
   readonly onManualCrop: () => void;
+  readonly interactionMode?: 'crop' | 'move';
 }
 
 interface DragState {
@@ -29,7 +30,8 @@ export function CropPreview({
   sourceHeight,
   crop,
   onChange,
-  onManualCrop
+  onManualCrop,
+  interactionMode = 'crop'
 }: CropPreviewProps) {
   const previewRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | undefined>(undefined);
@@ -37,7 +39,9 @@ export function CropPreview({
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (outputUrl) return;
     const target = event.target as HTMLElement;
-    const handle = (target.dataset.handle ?? 'move') as CropHandle;
+    const handle = (
+      interactionMode === 'move' ? 'move' : (target.dataset.handle ?? 'move')
+    ) as CropHandle;
     dragRef.current = {
       pointerId: event.pointerId,
       handle,
@@ -81,7 +85,7 @@ export function CropPreview({
   return (
     <div
       ref={previewRef}
-      className={`crop-preview${outputUrl ? ' crop-preview--output' : ''}`}
+      className={`crop-preview crop-preview--${interactionMode}${outputUrl ? ' crop-preview--output' : ''}`}
       style={{ aspectRatio: `${sourceWidth} / ${sourceHeight}` }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
