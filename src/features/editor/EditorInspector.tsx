@@ -1,20 +1,30 @@
 import {
+  BarChart3,
+  Check,
   FlipHorizontal2,
   FlipVertical2,
   History as HistoryIcon,
   RotateCcw,
-  RotateCw
+  RotateCw,
+  ShieldCheck,
+  Sparkles
 } from 'lucide-react';
 import { useState } from 'react';
+import { DEFAULT_IMAGE_ADJUSTMENTS } from '../../engine/pipeline/imageAdjustments';
 import { fitCropToAspect } from '../resize/cropMath';
 import type { EditorHistoryState } from './history';
+import type { EditorImageAnalysis } from './imageAnalysis';
+import { activeEditorLook, EDITOR_LOOKS } from './looks';
 import type { EditorExportSettings, EditorRecipe, EditorTool } from './types';
 
 interface EditorInspectorProps {
   readonly activeTool: EditorTool;
   readonly panel: 'adjust' | 'history';
   readonly history: EditorHistoryState;
+  readonly analysis: EditorImageAnalysis | undefined;
   readonly output: EditorExportSettings;
+  readonly outputWidth: number;
+  readonly outputHeight: number;
   readonly onPanel: (panel: 'adjust' | 'history') => void;
   readonly onApply: (recipe: EditorRecipe, label: string, group?: string) => void;
   readonly onOutput: (output: EditorExportSettings) => void;
@@ -32,7 +42,10 @@ export function EditorInspector({
   activeTool,
   panel,
   history,
+  analysis,
   output,
+  outputWidth,
+  outputHeight,
   onPanel,
   onApply,
   onOutput,
@@ -67,31 +80,56 @@ export function EditorInspector({
       <div className="editor-inspector__body">
         {panel === 'history' ? (
           <HistoryPanel history={history} onUndo={onUndo} onRedo={onRedo} />
-        ) : activeTool === 'crop' ? (
-          <CropControls
-            recipe={recipe}
-            sourceWidth={history.original.canvas.width}
-            sourceHeight={history.original.canvas.height}
-            onApply={onApply}
-          />
-        ) : activeTool === 'rotate' ? (
-          <RotateControls recipe={recipe} onApply={onApply} />
-        ) : activeTool === 'flip' ? (
-          <FlipControls recipe={recipe} onApply={onApply} />
-        ) : activeTool === 'canvas' ? (
-          <CanvasControls recipe={recipe} onApply={onApply} />
         ) : (
-          <AdjustmentControls recipe={recipe} onApply={onApply} />
+          <>
+            <StudioIntelligence recipe={recipe} analysis={analysis} onApply={onApply} />
+            {activeTool === 'looks' ? null : activeTool === 'crop' ? (
+              <CropControls
+                recipe={recipe}
+                sourceWidth={history.original.canvas.width}
+                sourceHeight={history.original.canvas.height}
+                onApply={onApply}
+              />
+            ) : activeTool === 'rotate' ? (
+              <RotateControls recipe={recipe} onApply={onApply} />
+            ) : activeTool === 'flip' ? (
+              <FlipControls recipe={recipe} onApply={onApply} />
+            ) : activeTool === 'canvas' ? (
+              <CanvasControls recipe={recipe} onApply={onApply} />
+            ) : (
+              <AdjustmentControls recipe={recipe} onApply={onApply} />
+            )}
+          </>
         )}
 
         {panel === 'adjust' ? (
           <>
-            <GeometrySummary recipe={recipe} />
             <fieldset className="editor-output-controls">
               <legend>Export</legend>
-              <label>
-                <span>Format</span>
+              <div className="editor-export-summary">
+                <strong>
+                  {outputWidth} × {outputHeight}
+                </strong>
+                <span>
+                  <ShieldCheck size={13} /> Metadata removed
+                </span>
+              </div>
+              <div className="editor-format-options" aria-label="Export format">
+                {(['webp', 'jpeg', 'png'] as const).map((format) => (
+                  <button
+                    key={format}
+                    type="button"
+                    aria-pressed={output.format === format}
+                    onClick={() => onOutput({ ...output, format })}
+                  >
+                    {format.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+              <label className="sr-only">
+                Format
                 <select
+                  aria-label="Format"
                   value={output.format}
                   onChange={(event) =>
                     onOutput({
@@ -137,6 +175,110 @@ export function EditorInspector({
   );
 }
 
+function StudioIntelligence({
+  recipe,
+  analysis,
+  onApply
+}: {
+  readonly recipe: EditorRecipe;
+  readonly analysis: EditorImageAnalysis | undefined;
+  readonly onApply: EditorInspectorProps['onApply'];
+}) {
+  const activeLook = activeEditorLook(recipe.adjustments);
+  const applyLook = (look: (typeof EDITOR_LOOKS)[number]) =>
+    onApply({ ...recipe, adjustments: look.adjustments }, `${look.label} look`);
+  const applyAutoTone = () => {
+    if (!analysis) return;
+    onApply(
+      {
+        ...recipe,
+        adjustments: {
+          ...DEFAULT_IMAGE_ADJUSTMENTS,
+          ...analysis.suggestedAdjustments,
+          temperature: recipe.adjustments.temperature,
+          tint: recipe.adjustments.tint
+        }
+      },
+      'Auto tone'
+    );
+  };
+
+  return (
+    <section className="editor-intelligence" aria-label="Local image analysis">
+      <header>
+        <span>
+          <BarChart3 size={15} /> Histogram
+        </span>
+        <small>{analysis ? 'Live local analysis' : 'Analyzing locally…'}</small>
+      </header>
+      <Histogram analysis={analysis} />
+      <div className="editor-looks-heading">
+        <strong>Quick looks</strong>
+        <small>One-click · non-destructive</small>
+      </div>
+      <div className="editor-looks" aria-label="Quick looks">
+        {EDITOR_LOOKS.map((look) => (
+          <button
+            key={look.id}
+            className={`editor-look editor-look--${look.id}`}
+            type="button"
+            aria-pressed={activeLook?.id === look.id}
+            title={look.description}
+            onClick={() => applyLook(look)}
+          >
+            <span aria-hidden="true">
+              {activeLook?.id === look.id ? <Check size={12} /> : null}
+            </span>
+            <small>{look.label}</small>
+          </button>
+        ))}
+      </div>
+      <button
+        className="editor-auto-tone"
+        type="button"
+        disabled={!analysis}
+        onClick={applyAutoTone}
+      >
+        <Sparkles size={15} />
+        <strong>Auto Tone</strong>
+        <span>Analyzed on this device</span>
+      </button>
+    </section>
+  );
+}
+
+function Histogram({ analysis }: { readonly analysis: EditorImageAnalysis | undefined }) {
+  const path = (values: readonly number[] | undefined) => {
+    if (!values) return '';
+    const points = values
+      .map((value, index) => `${(index / (values.length - 1)) * 100},${42 - value * 38}`)
+      .join(' L ');
+    return `M 0,42 L ${points} L 100,42 Z`;
+  };
+  return (
+    <div className={`editor-histogram${analysis ? '' : ' editor-histogram--loading'}`}>
+      <svg
+        viewBox="0 0 100 44"
+        preserveAspectRatio="none"
+        role="img"
+        aria-label="RGB luminance histogram"
+      >
+        <path className="editor-histogram__luma" d={path(analysis?.luminance)} />
+        <path className="editor-histogram__red" d={path(analysis?.red)} />
+        <path className="editor-histogram__green" d={path(analysis?.green)} />
+        <path className="editor-histogram__blue" d={path(analysis?.blue)} />
+      </svg>
+      {analysis ? (
+        <span>
+          <small>Shadows {Math.round(analysis.shadowPercent * 100)}%</small>
+          <small>Mid {Math.round(analysis.meanLuminance * 100)}%</small>
+          <small>Highlights {Math.round(analysis.highlightPercent * 100)}%</small>
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 function CropControls({
   recipe,
   sourceWidth,
@@ -172,6 +314,18 @@ function CropControls({
         </button>
         <button type="button" onClick={() => applyAspect(16 / 9)}>
           16:9
+        </button>
+        <button type="button" onClick={() => applyAspect(3 / 2)}>
+          3:2
+        </button>
+        <button type="button" onClick={() => applyAspect(4 / 5)}>
+          4:5
+        </button>
+        <button type="button" onClick={() => applyAspect(9 / 16)}>
+          9:16
+        </button>
+        <button type="button" onClick={() => applyAspect(21 / 9)}>
+          21:9
         </button>
       </div>
       <div className="editor-number-grid">
@@ -272,6 +426,8 @@ function CanvasControls({
   readonly recipe: EditorRecipe;
   readonly onApply: EditorInspectorProps['onApply'];
 }) {
+  const setCanvas = (width: number, height: number, label: string) =>
+    onApply({ ...recipe, canvas: { ...recipe.canvas, enabled: true, width, height } }, label);
   return (
     <fieldset className="editor-control-section">
       <legend>Canvas resize</legend>
@@ -288,6 +444,20 @@ function CanvasControls({
         />
         Enable custom canvas
       </label>
+      <div className="editor-canvas-presets" aria-label="Canvas presets">
+        <button type="button" onClick={() => setCanvas(1080, 1080, 'Square canvas')}>
+          Square<small>1080 × 1080</small>
+        </button>
+        <button type="button" onClick={() => setCanvas(1080, 1350, 'Portrait canvas')}>
+          Portrait<small>1080 × 1350</small>
+        </button>
+        <button type="button" onClick={() => setCanvas(1920, 1080, 'HD canvas')}>
+          HD<small>1920 × 1080</small>
+        </button>
+        <button type="button" onClick={() => setCanvas(3840, 2160, '4K canvas')}>
+          4K<small>3840 × 2160</small>
+        </button>
+      </div>
       <div className="editor-number-grid">
         <NumberField
           label="Width"
@@ -564,44 +734,6 @@ function HistoryPanel({
         </li>
       </ol>
     </section>
-  );
-}
-
-function GeometrySummary({ recipe }: { readonly recipe: EditorRecipe }) {
-  return (
-    <details className="editor-geometry-summary" open>
-      <summary>Geometry</summary>
-      <dl>
-        <div>
-          <dt>Crop</dt>
-          <dd>
-            {recipe.crop.width} × {recipe.crop.height}
-          </dd>
-        </div>
-        <div>
-          <dt>Rotate</dt>
-          <dd>{formatNumber(recipe.rotation)}°</dd>
-        </div>
-        <div>
-          <dt>Flip</dt>
-          <dd>
-            {recipe.flipHorizontal || recipe.flipVertical
-              ? [recipe.flipHorizontal ? 'H' : '', recipe.flipVertical ? 'V' : '']
-                  .filter(Boolean)
-                  .join(' + ')
-              : 'none'}
-          </dd>
-        </div>
-        <div>
-          <dt>Canvas</dt>
-          <dd>
-            {recipe.canvas.enabled
-              ? `${recipe.canvas.width} × ${recipe.canvas.height}`
-              : 'original'}
-          </dd>
-        </div>
-      </dl>
-    </details>
   );
 }
 

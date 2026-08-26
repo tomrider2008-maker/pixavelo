@@ -48,7 +48,7 @@ export function renderEditorPreview(
   );
   canvas.width = Math.max(1, Math.round(geometry.outputWidth * scale));
   canvas.height = Math.max(1, Math.round(geometry.outputHeight * scale));
-  const context = canvas.getContext('2d', { alpha: true });
+  const context = canvas.getContext('2d', { alpha: true, willReadFrequently: true });
   if (!context) throw new Error('2D canvas is unavailable.');
 
   context.clearRect(0, 0, canvas.width, canvas.height);

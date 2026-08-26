@@ -1,4 +1,4 @@
-import { Columns2, Maximize2, Minus, Plus } from 'lucide-react';
+import { Columns2, Maximize2 } from 'lucide-react';
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import type { ImageCrop } from '../../types/images';
 import { transformCrop, type CropHandle } from '../resize/cropMath';
@@ -255,11 +255,6 @@ export function EditorCanvas({
               {value === 'fit' ? 'Fit' : `${value}%`}
             </button>
           ))}
-        </div>
-        <div className="editor-viewbar__fine-zoom" aria-hidden="true">
-          <Minus size={14} />
-          <span />
-          <Plus size={14} />
         </div>
         <strong>
           {recipe.canvas.enabled ? recipe.canvas.width : recipe.crop.width} ×{' '}

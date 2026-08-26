@@ -100,3 +100,44 @@ test('Phase 7 mobile editor keeps canvas, tools, inspector and export reachable'
   await expect(page.getByRole('navigation', { name: 'Mobile navigation' })).toContainText('Edit');
   await expect(page.locator('body')).not.toHaveCSS('overflow-x', 'scroll');
 });
+
+test('Premium editor analysis, looks and production presets remain local and reversible', async ({
+  page
+}) => {
+  const nonGetRequests: string[] = [];
+  page.on('request', (request) => {
+    if (request.method() !== 'GET') nonGetRequests.push(`${request.method()} ${request.url()}`);
+  });
+  await page.goto('/edit');
+  const source = await makePng(page, 120, 80);
+  await page.locator('[data-image-input]').setInputFiles({
+    name: 'premium-editor-source.png',
+    mimeType: 'image/png',
+    buffer: source
+  });
+
+  await expect(page.getByRole('img', { name: 'RGB luminance histogram' })).toBeVisible();
+  const autoTone = page.getByRole('button', { name: /Auto Tone/ });
+  await expect(autoTone).toBeEnabled();
+  await page.getByRole('button', { name: 'Vivid' }).click();
+  await expect(page.getByRole('button', { name: 'Vivid' })).toHaveAttribute('aria-pressed', 'true');
+  await autoTone.click();
+
+  await page
+    .getByRole('navigation', { name: 'Editor tools' })
+    .getByRole('button', { name: 'Crop' })
+    .click();
+  await page.getByRole('button', { name: '4:5' }).click();
+  await page
+    .getByRole('navigation', { name: 'Editor tools' })
+    .getByRole('button', { name: 'Canvas' })
+    .click();
+  await page.getByRole('button', { name: /Portrait/ }).click();
+  await expect(page.locator('.editor-output-controls')).toContainText('1080 × 1350');
+
+  await page.getByRole('tab', { name: 'History' }).click();
+  await expect(page.locator('.editor-history-panel')).toContainText('Auto tone');
+  await expect(page.locator('.editor-history-panel')).toContainText('Aspect crop');
+  await expect(page.locator('.editor-history-panel')).toContainText('Portrait canvas');
+  expect(nonGetRequests).toEqual([]);
+});

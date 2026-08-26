@@ -8,6 +8,7 @@ import {
   LoaderCircle,
   Redo2,
   RotateCw,
+  Sparkles,
   SlidersHorizontal,
   Undo2
 } from 'lucide-react';
@@ -22,6 +23,7 @@ import { decodeEditorSource, type DecodedEditorSource } from './decodeEditorSour
 import { EditorCanvas } from './EditorCanvas';
 import { EditorInspector } from './EditorInspector';
 import { createEditorHistory, editorHistoryReducer } from './history';
+import { analyzeEditorSource, type EditorImageAnalysis } from './imageAnalysis';
 import {
   countRecipeEdits,
   createEditorRecipe,
@@ -37,6 +39,7 @@ import type {
 } from './types';
 
 const tools = [
+  { id: 'looks', label: 'Looks', icon: Sparkles },
   { id: 'crop', label: 'Crop', icon: Crop },
   { id: 'rotate', label: 'Rotate', icon: RotateCw },
   { id: 'flip', label: 'Flip', icon: FlipHorizontal2 },
@@ -56,6 +59,7 @@ export default function EditorPage() {
   const tool = useImageTool();
   const { notify } = useNotifications();
   const [decoded, setDecoded] = useState<DecodedEditorSource>();
+  const [analysis, setAnalysis] = useState<EditorImageAnalysis>();
   const [decodeState, setDecodeState] = useState<'idle' | 'decoding' | 'ready' | 'failed'>('idle');
   const [decodeError, setDecodeError] = useState<string>();
   const [activeTool, setActiveTool] = useState<EditorTool>('crop');
@@ -89,9 +93,10 @@ export default function EditorPage() {
         }
         const recipe = createEditorRecipe(nextSource.width, nextSource.height);
         setDecoded(nextSource);
+        setAnalysis(undefined);
         dispatch({ type: 'replace-source', recipe });
         setDecodeState('ready');
-        setActiveTool('crop');
+        setActiveTool('adjust');
         setInspectorPanel('adjust');
         setZoom('fit');
         setComparison(50);
@@ -108,6 +113,21 @@ export default function EditorPage() {
       source?.dispose();
     };
   }, [sourceFile, sourceValidation]);
+
+  useEffect(() => {
+    if (!decoded) return;
+    let cancelled = false;
+    void analyzeEditorSource(decoded)
+      .then((result) => {
+        if (!cancelled) setAnalysis(result);
+      })
+      .catch(() => {
+        if (!cancelled) setAnalysis(undefined);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [decoded]);
 
   const undo = useCallback(() => {
     discardOutput();
@@ -195,6 +215,7 @@ export default function EditorPage() {
       current?.dispose();
       return undefined;
     });
+    setAnalysis(undefined);
     setDecodeState('decoding');
     setDecodeError(undefined);
     void tool.chooseFile(file);
@@ -205,6 +226,7 @@ export default function EditorPage() {
       current?.dispose();
       return undefined;
     });
+    setAnalysis(undefined);
     setDecodeState('idle');
     setDecodeError(undefined);
     tool.removeFile();
@@ -260,9 +282,14 @@ export default function EditorPage() {
           <header className="editor-commandbar">
             <div className="editor-commandbar__identity">
               <h1>Image Editor</h1>
-              <button type="button" title="Choose another image" onClick={chooseAnother}>
-                {tool.file.name}
-              </button>
+              <span>
+                <button type="button" title="Choose another image" onClick={chooseAnother}>
+                  {tool.file.name}
+                </button>
+                <small>
+                  {decoded.width} × {decoded.height} · Saved locally
+                </small>
+              </span>
             </div>
             <div className="editor-commandbar__history">
               <button
@@ -356,7 +383,10 @@ export default function EditorPage() {
               activeTool={activeTool}
               panel={inspectorPanel}
               history={history}
+              analysis={analysis}
               output={exportSettings}
+              outputWidth={geometry?.outputWidth ?? decoded.width}
+              outputHeight={geometry?.outputHeight ?? decoded.height}
               onPanel={setInspectorPanel}
               onApply={applyRecipe}
               onOutput={changeExportSettings}

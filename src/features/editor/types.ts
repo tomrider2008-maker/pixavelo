@@ -1,6 +1,6 @@
 import type { CoreImageFormat, ImageAdjustments, ImageCrop } from '../../types/images';
 
-export type EditorTool = 'crop' | 'rotate' | 'flip' | 'canvas' | 'adjust';
+export type EditorTool = 'looks' | 'crop' | 'rotate' | 'flip' | 'canvas' | 'adjust';
 export type EditorCompareMode = 'slider' | 'side-by-side' | 'original' | 'output';
 export type EditorZoom = 'fit' | 50 | 100 | 200 | 400;
 
