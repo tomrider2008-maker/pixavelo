@@ -2,23 +2,21 @@ import {
   AlertTriangle,
   Check,
   Download,
+  Eye,
   Gauge,
   LoaderCircle,
+  Maximize2,
   RotateCcw,
+  ScanSearch,
   ShieldCheck,
-  Sparkles,
-  Wand2,
+  Target,
   X
 } from 'lucide-react';
 import { useMemo, useState, useEffect, type KeyboardEvent } from 'react';
 import { useNotifications } from '../../components/feedback/Notifications';
 import type { CoreImageFormat, TargetResizeMode } from '../../types/images';
 import { formatBytes, formatReduction } from '../../utils/format';
-import {
-  analyzeBestSettings,
-  calculateVisualFidelity,
-  getDominantAmbientColor
-} from '../../utils/imageAnalysis';
+import { analyzeBestSettings, calculateVisualFidelity } from '../../utils/imageAnalysis';
 import { ImageToolInput } from '../tools/ImageToolInput';
 import { canPreviewOriginal } from '../tools/previewCapabilities';
 import { resolveOutputFormat, useImageTool } from '../tools/useImageTool';
@@ -32,6 +30,13 @@ import {
 
 type CompressionMode = 'profile' | 'target';
 type OutputChoice = CoreImageFormat | 'keep';
+
+const PROFILE_SHORTCUTS: readonly CompressionProfileId[] = [
+  'maximum-quality',
+  'balanced',
+  'web-optimized',
+  'email-optimized'
+];
 
 const stageLabels = {
   preparing: 'Preparing locally',
@@ -55,18 +60,7 @@ export default function OptimizePage() {
   const [comparison, setComparison] = useState(50);
   const tool = useImageTool();
   const { notify } = useNotifications();
-  const [ambientColor, setAmbientColor] = useState<string>('transparent');
   const [fidelity, setFidelity] = useState<number | undefined>();
-
-  useEffect(() => {
-    if (tool.file) {
-      getDominantAmbientColor(tool.file)
-        .then(setAmbientColor)
-        .catch(() => setAmbientColor('transparent'));
-    } else {
-      queueMicrotask(() => setAmbientColor('transparent'));
-    }
-  }, [tool.file]);
 
   useEffect(() => {
     if (!tool.file || !tool.output) {
@@ -136,8 +130,8 @@ export default function OptimizePage() {
     setQuality(bestQuality);
     setProfileId('balanced');
     notify({
-      title: 'Smart Suggest applied',
-      message: `Analyzed image and applied optimal settings: ${bestFormat.toUpperCase()} at ${bestQuality} quality.`,
+      title: 'Image analysis applied',
+      message: `Local analysis selected ${bestFormat.toUpperCase()} at ${bestQuality} quality.`,
       tone: 'success'
     });
   };
@@ -202,12 +196,15 @@ export default function OptimizePage() {
   };
 
   return (
-    <section className="converter-page tool-page optimize-page phase5-optimize-page">
+    <section className="converter-page tool-page optimize-page phase5-optimize-page premium-optimize">
       <header className="workspace-header">
         <div>
           <h1>Compress images</h1>
           <p>Reduce file size locally without sacrificing control.</p>
         </div>
+        <span className="workspace-header__assurance">
+          <ShieldCheck size={15} aria-hidden="true" /> Measured, never estimated
+        </span>
       </header>
 
       <ImageToolInput
@@ -222,18 +219,27 @@ export default function OptimizePage() {
       />
 
       {tool.file ? (
-        <div
-          className="optimize-layout phase5-optimize-layout"
-          style={{ '--ambient-color': ambientColor } as React.CSSProperties}
-        >
+        <div className="optimize-layout phase5-optimize-layout">
           <div className="optimize-main">
+            <ComparisonPreview
+              sourceUrl={previewSourceUrl}
+              outputUrl={tool.output?.url}
+              comparison={comparison}
+              onChange={setComparison}
+            />
             <header className="optimize-controls-header">
+              <div>
+                <small>Compression controls</small>
+                <strong>
+                  {mode === 'profile' ? selectedProfile.label : `${targetKb} KB target`}
+                </strong>
+              </div>
               <button
                 type="button"
                 className="button button--secondary smart-suggest-btn"
                 onClick={() => void applySmartSuggest()}
               >
-                <Wand2 size={16} /> Smart Suggest
+                <ScanSearch size={16} aria-hidden="true" /> Analyze image
               </button>
             </header>
             <div
@@ -263,7 +269,7 @@ export default function OptimizePage() {
                 onClick={() => changeMode('target')}
                 onKeyDown={onTabKeyDown}
               >
-                <Gauge size={16} aria-hidden="true" /> Target file size
+                <Target size={16} aria-hidden="true" /> Target file size
               </button>
             </div>
 
@@ -275,6 +281,25 @@ export default function OptimizePage() {
             >
               {mode === 'profile' ? (
                 <div className="profile-control-grid">
+                  <fieldset className="compression-profile-grid">
+                    <legend>Workflow profiles</legend>
+                    {PROFILE_SHORTCUTS.map((shortcut) => {
+                      const profile = findCompressionProfile(shortcut);
+                      return (
+                        <button
+                          key={profile.id}
+                          type="button"
+                          className={profileId === profile.id ? 'selected' : ''}
+                          aria-pressed={profileId === profile.id}
+                          disabled={tool.status === 'processing'}
+                          onClick={() => applyProfile(profile.id)}
+                        >
+                          <strong>{profile.label}</strong>
+                          <small>{profile.description}</small>
+                        </button>
+                      );
+                    })}
+                  </fieldset>
                   <label className="control-field">
                     <span>Quality profile</span>
                     <select
@@ -447,7 +472,7 @@ export default function OptimizePage() {
                     </fieldset>
                   </div>
                   <div className="bounded-search-note">
-                    <Sparkles size={16} aria-hidden="true" />
+                    <ShieldCheck size={16} aria-hidden="true" />
                     <span>
                       <strong>Maximum visual quality</strong> · bounded local search against actual
                       output bytes
@@ -508,20 +533,21 @@ export default function OptimizePage() {
                 </label>
               </div>
             </div>
-
-            <ComparisonPreview
-              sourceUrl={previewSourceUrl}
-              outputUrl={tool.output?.url}
-              comparison={comparison}
-              onChange={setComparison}
-            />
           </div>
 
           <aside
             className="tool-summary phase5-output-summary"
             aria-labelledby="compression-summary-title"
           >
-            <h2 id="compression-summary-title">Output summary</h2>
+            <div className="tool-summary__heading">
+              <div>
+                <small>{tool.output ? 'Measured after encode' : 'Verified local encode'}</small>
+                <h2 id="compression-summary-title">
+                  {tool.output ? 'Actual result' : 'Output summary'}
+                </h2>
+              </div>
+              {tool.output ? <span>Verified</span> : null}
+            </div>
             {tool.output ? (
               <>
                 <div className="tool-summary__hero">
@@ -531,12 +557,20 @@ export default function OptimizePage() {
                     {formatReduction(tool.file.size, tool.output.size)}
                   </span>
                   {fidelity !== undefined && (
-                    <span className="fidelity-badge" title="Structural Similarity Fidelity">
-                      {fidelity}% Fidelity
+                    <span className="fidelity-badge" title="Locally measured structural similarity">
+                      {fidelity}% visual fidelity
                     </span>
                   )}
                 </div>
                 <dl className="tool-summary__facts">
+                  <div>
+                    <dt>Original size</dt>
+                    <dd>{formatBytes(tool.file.size)}</dd>
+                  </div>
+                  <div>
+                    <dt>Actual output</dt>
+                    <dd>{formatBytes(tool.output.size)}</dd>
+                  </div>
                   <div>
                     <dt>Dimensions</dt>
                     <dd>
@@ -632,7 +666,7 @@ export default function OptimizePage() {
               </button>
             ) : (
               <button className="button button--secondary" type="button" onClick={reset}>
-                <RotateCcw size={17} aria-hidden="true" /> Reset
+                <RotateCcw size={17} aria-hidden="true" /> Reset settings
               </button>
             )}
 
@@ -700,7 +734,7 @@ function ComparisonPreview({
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
-  const [showDiff, setShowDiff] = useState(false);
+  const [viewMode, setViewMode] = useState<'compare' | 'difference'>('compare');
   const imageUrl = outputUrl ?? sourceUrl;
 
   const handleWheel = (e: React.WheelEvent) => {
@@ -729,26 +763,25 @@ function ComparisonPreview({
     setPan({ x: 0, y: 0 });
   };
 
+  const resetView = () => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  };
+
   return (
     <div className="phase5-comparison-wrapper">
-      <div className="comparison-toolbar">
-        <label className="diff-toggle" title="Highlight compression artifacts">
-          <input
-            type="checkbox"
-            checked={showDiff}
-            onChange={(e) => setShowDiff(e.target.checked)}
-          />
-          <Wand2 size={14} /> Artifact Diff Mode
-        </label>
-        {zoom > 1 && <span className="zoom-indicator">{Math.round(zoom * 100)}%</span>}
-      </div>
       <div
-        className="phase5-comparison"
-        aria-label="Image comparison preview"
+        className={`phase5-comparison phase5-comparison--${viewMode}`}
+        aria-label={
+          viewMode === 'difference'
+            ? 'Amplified visual difference preview'
+            : 'Image comparison preview'
+        }
         onWheel={handleWheel}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        onPointerCancel={() => setIsPanning(false)}
         onDoubleClick={handleDoubleClick}
         style={{ cursor: zoom > 1 ? (isPanning ? 'grabbing' : 'grab') : 'default' }}
       >
@@ -774,7 +807,7 @@ function ComparisonPreview({
             </div>
           )}
 
-          {imageUrl ? (
+          {imageUrl && viewMode === 'compare' ? (
             <div
               className="phase5-comparison__output"
               style={{ clipPath: `inset(0 0 0 ${comparison}%)` }}
@@ -783,36 +816,66 @@ function ComparisonPreview({
             </div>
           ) : null}
 
-          {showDiff && imageUrl && sourceUrl && (
-            <div
-              className="phase5-comparison__diff"
-              style={{ clipPath: `inset(0 0 0 ${comparison}%)` }}
-            >
-              <img src={imageUrl} alt="Diff overlay" draggable={false} />
+          {viewMode === 'difference' && outputUrl && sourceUrl ? (
+            <div className="phase5-comparison__diff">
+              <img src={outputUrl} alt="Amplified compression difference" draggable={false} />
             </div>
-          )}
+          ) : null}
         </div>
 
         <span className="phase5-comparison__label phase5-comparison__label--original">
           Original
         </span>
         <span className="phase5-comparison__label phase5-comparison__label--output">
-          {outputUrl ? 'Optimized' : 'Output preview'}
+          {viewMode === 'difference'
+            ? 'Difference amplified'
+            : outputUrl
+              ? 'Optimized'
+              : 'Output preview'}
         </span>
-        <span
-          className="phase5-comparison__divider"
-          style={{ left: `${comparison}%` }}
-          aria-hidden="true"
-        />
-        <input
-          aria-label="Compare original and optimized image"
-          type="range"
-          min="0"
-          max="100"
-          step="0.1"
-          value={comparison}
-          onChange={(event) => onChange(event.currentTarget.valueAsNumber)}
-        />
+        {viewMode === 'compare' ? (
+          <>
+            <span
+              className="phase5-comparison__divider"
+              style={{ left: `${comparison}%` }}
+              aria-hidden="true"
+            />
+            <input
+              aria-label="Compare original and optimized image"
+              type="range"
+              min="0"
+              max="100"
+              step="0.1"
+              value={comparison}
+              onChange={(event) => onChange(event.currentTarget.valueAsNumber)}
+            />
+          </>
+        ) : null}
+      </div>
+      <div className="comparison-toolbar" aria-label="Preview controls">
+        <div className="comparison-toolbar__modes">
+          <button
+            type="button"
+            className={viewMode === 'compare' ? 'selected' : ''}
+            aria-pressed={viewMode === 'compare'}
+            onClick={() => setViewMode('compare')}
+          >
+            <Eye size={15} aria-hidden="true" /> Compare
+          </button>
+          <button
+            type="button"
+            className={viewMode === 'difference' ? 'selected' : ''}
+            aria-pressed={viewMode === 'difference'}
+            disabled={!outputUrl}
+            onClick={() => setViewMode('difference')}
+          >
+            <ScanSearch size={15} aria-hidden="true" /> Difference
+          </button>
+        </div>
+        <span className="zoom-indicator">{Math.round(zoom * 100)}%</span>
+        <button type="button" onClick={resetView}>
+          <Maximize2 size={15} aria-hidden="true" /> Fit
+        </button>
       </div>
     </div>
   );

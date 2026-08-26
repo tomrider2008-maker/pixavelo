@@ -6,6 +6,8 @@ import {
   ImagePlus,
   LoaderCircle,
   Play,
+  Search,
+  Settings2,
   ShieldCheck,
   Trash2,
   X
@@ -22,7 +24,6 @@ import { filesFromClipboardData, readClipboardImageFiles } from './clipboard';
 import { AdvancedFormatCapabilities } from './AdvancedFormatCapabilities';
 import { ConversionQueue } from './ConversionQueue';
 import { ConversionSettingsPanel } from './ConversionSettingsPanel';
-import { ConversionSummary } from './ConversionSummary';
 import { buildConversionFilename, deduplicateFilenames } from './naming';
 import type { ConversionJob, ConversionQueueFilter, ConversionSortOrder } from './types';
 import { useConversionQueue } from './useConversionQueue';
@@ -38,10 +39,12 @@ export default function ConverterPage() {
   const queue = useConversionQueue(initialFiles, readRequestedFormat());
   const [filter, setFilter] = useState<ConversionQueueFilter>('all');
   const [sortOrder, setSortOrder] = useState<ConversionSortOrder>('insertion');
+  const [query, setQuery] = useState('');
+  const [bulkFormat, setBulkFormat] = useState('');
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [archiveBusy, setArchiveBusy] = useState(false);
   const [archiveProgress, setArchiveProgress] = useState<string>();
-  const [showSummary, setShowSummary] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const archiveControllerRef = useRef<AbortController | undefined>(undefined);
@@ -59,18 +62,17 @@ export default function ConverterPage() {
     []
   );
 
-  // Show summary when all jobs reach a terminal state
-  const allSettled =
-    queue.jobs.length > 0 &&
-    queue.jobs.every((j) => ['completed', 'failed', 'cancelled', 'unsupported'].includes(j.status));
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (allSettled) setShowSummary(true);
-  }, [allSettled]);
+    if (!settingsOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSettingsOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [settingsOpen]);
 
   const addFiles = useCallback(
     (files: FileList | readonly File[], source: string) => {
-      setShowSummary(false);
       const requested = files.length;
       const count = enqueueFiles(files);
       if (count > 0) {
@@ -229,7 +231,12 @@ export default function ConverterPage() {
     return all;
   }, [queue.jobs, sortOrder]);
 
-  const visibleJobs = sortedJobs.filter((job) => matchesFilter(job, filter));
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  const visibleJobs = sortedJobs.filter(
+    (job) =>
+      matchesFilter(job, filter) &&
+      (normalizedQuery.length === 0 || job.file.name.toLocaleLowerCase().includes(normalizedQuery))
+  );
 
   const downloadCompleted = async (requireSettled: boolean) => {
     if (completedJobs.length === 0) return;
@@ -293,7 +300,7 @@ export default function ConverterPage() {
 
   return (
     <section
-      className={`converter-page converter-workspace${dragging ? ' converter-workspace--dragging' : ''}`}
+      className={`converter-page converter-workspace premium-converter${dragging ? ' converter-workspace--dragging' : ''}`}
       onDragEnter={(event) => {
         event.preventDefault();
         setDragging(true);
@@ -314,6 +321,9 @@ export default function ConverterPage() {
             <span className="converter-copy--mobile">Convert mixed files locally.</span>
           </p>
         </div>
+        <span className="workspace-header__assurance">
+          <ShieldCheck size={15} aria-hidden="true" /> Local batch workflow
+        </span>
       </header>
 
       <div className="converter-toolbar" aria-label="Converter commands">
@@ -373,6 +383,15 @@ export default function ConverterPage() {
             ? ` · ${selectedCount} selected`
             : ''}
         </span>
+        <button
+          className="button button--secondary converter-toolbar__settings"
+          type="button"
+          aria-expanded={settingsOpen}
+          aria-controls="conversion-settings-panel"
+          onClick={() => setSettingsOpen(true)}
+        >
+          <Settings2 size={17} aria-hidden="true" /> Settings
+        </button>
         {selectedCount > 0 ? (
           <button
             className="button button--quiet converter-toolbar__remove"
@@ -409,11 +428,6 @@ export default function ConverterPage() {
             </button>
           ) : (
             <>
-              {/* Session summary */}
-              {showSummary && allSettled && (
-                <ConversionSummary jobs={queue.jobs} onDismiss={() => setShowSummary(false)} />
-              )}
-
               {/* Filter tabs + sort control */}
               <div className="queue-controls">
                 <div className="queue-filters" role="tablist" aria-label="Filter conversion queue">
@@ -456,21 +470,57 @@ export default function ConverterPage() {
                   ) : null}
                 </div>
 
-                {/* Sort control */}
-                <label className="queue-sort" htmlFor="queue-sort-select">
-                  <span className="sr-only">Sort by</span>
-                  <select
-                    id="queue-sort-select"
-                    value={sortOrder}
-                    onChange={(e) => setSortOrder(e.currentTarget.value as ConversionSortOrder)}
-                  >
-                    <option value="insertion">Order added</option>
-                    <option value="name-asc">Name A → Z</option>
-                    <option value="size-desc">Size (large first)</option>
-                    <option value="format">Format</option>
-                    <option value="status">Status</option>
-                  </select>
-                </label>
+                <div className="queue-controls__tools">
+                  <label className="queue-search">
+                    <Search size={15} aria-hidden="true" />
+                    <span className="sr-only">Search conversion queue</span>
+                    <input
+                      type="search"
+                      value={query}
+                      placeholder="Search files"
+                      onChange={(event) => setQuery(event.currentTarget.value)}
+                    />
+                  </label>
+                  {selectedCount > 0 ? (
+                    <label className="queue-bulk-format">
+                      <span className="sr-only">Set format for selected files</span>
+                      <select
+                        value={bulkFormat}
+                        disabled={processing}
+                        onChange={(event) => {
+                          const value = event.currentTarget.value;
+                          setBulkFormat('');
+                          if (!value) return;
+                          const override =
+                            value === 'global' ? undefined : (value as CoreImageFormat);
+                          queue.jobs.forEach((job) => {
+                            if (job.selected) queue.setFormatOverride(job.id, override);
+                          });
+                        }}
+                      >
+                        <option value="">Selected format…</option>
+                        <option value="global">Use global format</option>
+                        <option value="jpeg">Convert selected to JPEG</option>
+                        <option value="png">Convert selected to PNG</option>
+                        <option value="webp">Convert selected to WebP</option>
+                      </select>
+                    </label>
+                  ) : null}
+                  <label className="queue-sort" htmlFor="queue-sort-select">
+                    <span className="sr-only">Sort by</span>
+                    <select
+                      id="queue-sort-select"
+                      value={sortOrder}
+                      onChange={(e) => setSortOrder(e.currentTarget.value as ConversionSortOrder)}
+                    >
+                      <option value="insertion">Order added</option>
+                      <option value="name-asc">Name A → Z</option>
+                      <option value="size-desc">Size (large first)</option>
+                      <option value="format">Format</option>
+                      <option value="status">Status</option>
+                    </select>
+                  </label>
+                </div>
               </div>
 
               <ConversionQueue
@@ -492,12 +542,23 @@ export default function ConverterPage() {
         </main>
 
         <ConversionSettingsPanel
+          open={settingsOpen}
           settings={queue.settings}
           disabled={processing}
+          onClose={() => setSettingsOpen(false)}
           onSetSettings={queue.setSettings}
           onUpdateSettings={queue.updateSettings}
         />
       </div>
+
+      {settingsOpen ? (
+        <button
+          className="conversion-settings-backdrop"
+          type="button"
+          aria-label="Close output settings"
+          onClick={() => setSettingsOpen(false)}
+        />
+      ) : null}
 
       {queue.jobs.length > 0 ? (
         <footer className="converter-summary" aria-label="Queue summary">

@@ -1,18 +1,31 @@
-import { Check, Info, Save, Trash2 } from 'lucide-react';
+import {
+  Check,
+  Globe2,
+  Image,
+  Info,
+  MonitorSmartphone,
+  Save,
+  Scale,
+  Trash2,
+  X
+} from 'lucide-react';
 import { useState } from 'react';
-import type { CoreImageFormat } from '../../types/images';
 import { conversionPresets, identifyPreset, settingsForPreset } from './presets';
 import { deletePreset, listSavedPresets, savePreset, type SavedPreset } from './savedPresets';
 import type { ConversionSettings } from './types';
 
 export function ConversionSettingsPanel({
+  open = false,
   settings,
   disabled,
+  onClose,
   onSetSettings,
   onUpdateSettings
 }: {
+  readonly open?: boolean;
   readonly settings: ConversionSettings;
   readonly disabled: boolean;
+  readonly onClose?: () => void;
   readonly onSetSettings: (settings: ConversionSettings, invalidate?: boolean) => void;
   readonly onUpdateSettings: (update: Partial<ConversionSettings>, invalidate?: boolean) => void;
 }) {
@@ -25,7 +38,7 @@ export function ConversionSettingsPanel({
 
   const handleSavePreset = () => {
     if (!saveLabel.trim()) return;
-    savePreset(saveLabel, settings);
+    savePreset(saveLabel, { ...settings, stripMetadata: true });
     setSaveLabel('');
     setShowSaveInput(false);
     refreshSaved();
@@ -36,41 +49,78 @@ export function ConversionSettingsPanel({
     refreshSaved();
   };
 
-  return (
-    <aside className="conversion-settings" aria-labelledby="output-settings-title">
-      <h2 id="output-settings-title">Output settings</h2>
+  const applyPreset = (id: string) => {
+    const builtIn = settingsForPreset(id as typeof preset);
+    if (builtIn) {
+      onSetSettings({ ...builtIn, stripMetadata: true });
+      return;
+    }
+    const saved = savedPresets.find((item) => item.id === id);
+    if (saved) onSetSettings({ ...saved.settings, stripMetadata: true });
+  };
 
-      {/* ── Preset selector ──────────────────────────────────────── */}
-      <label htmlFor="conversion-preset">Preset</label>
-      <select
-        id="conversion-preset"
-        value={preset}
-        disabled={disabled}
-        onChange={(event) => {
-          const id = event.currentTarget.value;
-          // Check built-in presets first
-          const builtIn = settingsForPreset(id as typeof preset);
-          if (builtIn) {
-            onSetSettings(builtIn);
-            return;
-          }
-          // Check saved presets
-          const saved = savedPresets.find((p) => p.id === id);
-          if (saved) onSetSettings(saved.settings);
-        }}
-      >
+  return (
+    <aside
+      id="conversion-settings-panel"
+      className={`conversion-settings${open ? ' conversion-settings--open' : ''}`}
+      aria-labelledby="output-settings-title"
+    >
+      <div className="conversion-settings__header">
+        <div>
+          <small>Batch defaults</small>
+          <h2 id="output-settings-title">Output settings</h2>
+        </div>
+        <button
+          className="icon-button conversion-settings__close"
+          type="button"
+          aria-label="Close output settings"
+          onClick={onClose}
+        >
+          <X size={18} aria-hidden="true" />
+        </button>
+      </div>
+
+      <fieldset className="conversion-preset-grid">
+        <legend>Workflow presets</legend>
         {conversionPresets.map((item) => (
-          <option key={item.id} value={item.id}>
-            {item.label}
-          </option>
+          <button
+            key={item.id}
+            type="button"
+            className={preset === item.id ? 'selected' : ''}
+            aria-pressed={preset === item.id}
+            disabled={disabled}
+            onClick={() => applyPreset(item.id)}
+          >
+            <PresetIcon id={item.id} />
+            <span>
+              <strong>{item.label}</strong>
+              <small>{presetDescription(item.id)}</small>
+            </span>
+          </button>
         ))}
-        {savedPresets.map((p) => (
-          <option key={p.id} value={p.id}>
-            ★ {p.label}
-          </option>
-        ))}
-        <option value="custom">Custom</option>
-      </select>
+      </fieldset>
+
+      <label className="conversion-settings__preset-library" htmlFor="conversion-preset">
+        <span>Preset</span>
+        <select
+          id="conversion-preset"
+          value={preset}
+          disabled={disabled}
+          onChange={(event) => applyPreset(event.currentTarget.value)}
+        >
+          {conversionPresets.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.label}
+            </option>
+          ))}
+          {savedPresets.map((item) => (
+            <option key={item.id} value={item.id}>
+              Saved · {item.label}
+            </option>
+          ))}
+          <option value="custom">Custom</option>
+        </select>
+      </label>
 
       {/* ── Save custom preset ───────────────────────────────────── */}
       {showSaveInput ? (
@@ -133,26 +183,28 @@ export function ConversionSettingsPanel({
         </div>
       )}
 
-      {/* ── Global output format ─────────────────────────────────── */}
-      <label htmlFor="output-format">Global output format</label>
-      <select
-        id="output-format"
-        value={settings.outputFormat}
-        disabled={disabled}
-        onChange={(event) =>
-          onUpdateSettings({ outputFormat: event.currentTarget.value as CoreImageFormat })
-        }
-      >
-        <option value="jpeg">JPEG</option>
-        <option value="png">PNG</option>
-        <option value="webp">WebP</option>
-      </select>
+      <fieldset className="settings-segmented settings-format-switch">
+        <legend>Global output format</legend>
+        {(['jpeg', 'webp', 'png'] as const).map((format) => (
+          <label key={format} className={settings.outputFormat === format ? 'selected' : ''}>
+            <input
+              type="radio"
+              name="global-output-format"
+              value={format}
+              checked={settings.outputFormat === format}
+              disabled={disabled}
+              onChange={() => onUpdateSettings({ outputFormat: format })}
+            />
+            {format.toUpperCase()}
+          </label>
+        ))}
+      </fieldset>
 
       {/* ── Quality mode toggle ───────────────────────────────────── */}
       {settings.outputFormat !== 'png' && (
-        <fieldset className="settings-quality-mode">
+        <fieldset className="settings-segmented settings-quality-mode">
           <legend>Quality mode</legend>
-          <label className="radio-row">
+          <label className={settings.qualityMode === 'quality' ? 'selected' : ''}>
             <input
               type="radio"
               name="quality-mode"
@@ -161,9 +213,9 @@ export function ConversionSettingsPanel({
               disabled={disabled}
               onChange={() => onUpdateSettings({ qualityMode: 'quality' })}
             />
-            Quality slider
+            Quality
           </label>
-          <label className="radio-row">
+          <label className={settings.qualityMode === 'target' ? 'selected' : ''}>
             <input
               type="radio"
               name="quality-mode"
@@ -172,7 +224,7 @@ export function ConversionSettingsPanel({
               disabled={disabled}
               onChange={() => onUpdateSettings({ qualityMode: 'target' })}
             />
-            Target file size
+            Target size
           </label>
         </fieldset>
       )}
@@ -216,18 +268,21 @@ export function ConversionSettingsPanel({
       )}
 
       {/* ── Transparency background ──────────────────────────────── */}
-      <label className="color-field">
-        <span>Transparency background</span>
-        <span className="color-field__control">
-          <input
-            type="color"
-            value={settings.background}
-            disabled={disabled}
-            onChange={(event) => onUpdateSettings({ background: event.currentTarget.value })}
-          />
-          <code>{settings.background.toUpperCase()}</code>
-        </span>
-      </label>
+      {settings.outputFormat === 'jpeg' ? (
+        <label className="color-field">
+          <span>Transparency background</span>
+          <span className="color-field__control">
+            <input
+              type="color"
+              value={settings.background}
+              disabled={disabled}
+              onChange={(event) => onUpdateSettings({ background: event.currentTarget.value })}
+            />
+            <code>{settings.background.toUpperCase()}</code>
+          </span>
+          <small>Transparent pixels are flattened onto this color for JPEG.</small>
+        </label>
+      ) : null}
 
       {/* ── Naming pattern ───────────────────────────────────────── */}
       <label className="naming-field" htmlFor="naming-pattern">
@@ -247,21 +302,13 @@ export function ConversionSettingsPanel({
         </small>
       </label>
 
-      {/* ── Metadata strip toggle ────────────────────────────────── */}
-      <label className="toggle-field">
-        <input
-          type="checkbox"
-          checked={settings.stripMetadata}
-          disabled={disabled}
-          onChange={(event) => onUpdateSettings({ stripMetadata: event.currentTarget.checked })}
-        />
-        <span>Strip EXIF / metadata</span>
-      </label>
-      {!settings.stripMetadata && (
-        <small className="settings-metadata-warn">
-          ⚠ EXIF data (including GPS location) may be present in output files.
-        </small>
-      )}
+      <div className="settings-lock-row">
+        <Check size={15} aria-hidden="true" />
+        <span>
+          <strong>Remove metadata</strong>
+          <small>Re-encoding omits EXIF, location, and source metadata.</small>
+        </span>
+      </div>
 
       {/* ── Auto-process toggle ──────────────────────────────────── */}
       <label className="toggle-field">
@@ -292,4 +339,18 @@ export function ConversionSettingsPanel({
       </div>
     </aside>
   );
+}
+
+function PresetIcon({ id }: { readonly id: (typeof conversionPresets)[number]['id'] }) {
+  if (id === 'web-delivery') return <Globe2 size={16} aria-hidden="true" />;
+  if (id === 'lossless-png') return <Image size={16} aria-hidden="true" />;
+  if (id === 'max-compat') return <MonitorSmartphone size={16} aria-hidden="true" />;
+  return <Scale size={16} aria-hidden="true" />;
+}
+
+function presetDescription(id: (typeof conversionPresets)[number]['id']) {
+  if (id === 'web-delivery') return 'Modern web delivery';
+  if (id === 'lossless-png') return 'Lossless pixels';
+  if (id === 'max-compat') return 'Broad compatibility';
+  return 'Quality and size';
 }

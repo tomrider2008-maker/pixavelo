@@ -63,7 +63,7 @@ export const conversionPresets: readonly ConversionPreset[] = [
       autoProcess: false,
       qualityMode: 'quality',
       targetKb: 200,
-      stripMetadata: false
+      stripMetadata: true
     }
   }
 ] as const;
