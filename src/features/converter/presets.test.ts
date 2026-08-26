@@ -7,7 +7,11 @@ describe('conversion presets', () => {
       outputFormat: 'webp',
       quality: 82,
       background: '#ffffff',
-      namingPattern: '{name}-web'
+      namingPattern: '{name}-web',
+      autoProcess: false,
+      qualityMode: 'quality',
+      targetKb: 200,
+      stripMetadata: true
     });
   });
 
