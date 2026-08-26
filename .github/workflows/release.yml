@@ -75,7 +75,7 @@ jobs:
       inputs.target == 'preview' &&
       inputs.confirmation == 'PREVIEW' &&
       github.ref != 'refs/heads/main'
-    environment: production
+    environment: preview
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
