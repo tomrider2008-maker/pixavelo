@@ -76,7 +76,7 @@ export default function OptimizePage() {
     // Fetch blob from the output URL to compare with source file
     fetch(tool.output.url)
       .then((res) => res.blob())
-      .then((blob) => calculateVisualFidelity(tool.file!, blob))
+      .then((blob) => calculateVisualFidelity(tool.file as unknown as File, blob))
       .then(setFidelity)
       .catch(() => setFidelity(undefined));
   }, [tool.file, tool.output]);
