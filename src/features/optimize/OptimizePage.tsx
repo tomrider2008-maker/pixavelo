@@ -7,12 +7,18 @@ import {
   RotateCcw,
   ShieldCheck,
   Sparkles,
+  Wand2,
   X
 } from 'lucide-react';
-import { useMemo, useState, type KeyboardEvent } from 'react';
+import { useMemo, useState, useEffect, type KeyboardEvent } from 'react';
 import { useNotifications } from '../../components/feedback/Notifications';
 import type { CoreImageFormat, TargetResizeMode } from '../../types/images';
 import { formatBytes, formatReduction } from '../../utils/format';
+import {
+  analyzeBestSettings,
+  calculateVisualFidelity,
+  getDominantAmbientColor
+} from '../../utils/imageAnalysis';
 import { ImageToolInput } from '../tools/ImageToolInput';
 import { canPreviewOriginal } from '../tools/previewCapabilities';
 import { resolveOutputFormat, useImageTool } from '../tools/useImageTool';
@@ -49,6 +55,32 @@ export default function OptimizePage() {
   const [comparison, setComparison] = useState(50);
   const tool = useImageTool();
   const { notify } = useNotifications();
+  const [ambientColor, setAmbientColor] = useState<string>('transparent');
+  const [fidelity, setFidelity] = useState<number | undefined>();
+
+  useEffect(() => {
+    if (tool.file) {
+      getDominantAmbientColor(tool.file)
+        .then(setAmbientColor)
+        .catch(() => setAmbientColor('transparent'));
+    } else {
+      setAmbientColor('transparent');
+    }
+  }, [tool.file]);
+
+  useEffect(() => {
+    if (!tool.file || !tool.output) {
+      setFidelity(undefined);
+      return;
+    }
+    // Fetch blob from the output URL to compare with source file
+    fetch(tool.output.url)
+      .then((res) => res.blob())
+      .then((blob) => calculateVisualFidelity(tool.file!, blob))
+      .then(setFidelity)
+      .catch(() => setFidelity(undefined));
+  }, [tool.file, tool.output]);
+
   const sourceFormat = tool.validation?.format.toUpperCase() ?? 'source';
   const selectedFormat = resolveOutputFormat(format, tool.validation);
   const outputFormat = mode === 'target' && selectedFormat === 'png' ? 'webp' : selectedFormat;
@@ -80,7 +112,6 @@ export default function OptimizePage() {
   }, [maximumLongEdge, mode, preserveDimensions, targetResizeMode, tool.validation?.dimensions]);
 
   const changeMode = (nextMode: CompressionMode) => {
-    tool.discardOutput();
     if (nextMode === 'target' && format === 'png') setFormat('webp');
     setMode(nextMode);
   };
@@ -93,9 +124,23 @@ export default function OptimizePage() {
     window.requestAnimationFrame(() => document.getElementById(`${nextMode}-tab`)?.focus());
   };
 
+  const applySmartSuggest = async () => {
+    if (!tool.file) return;
+    const { format: bestFormat, quality: bestQuality } = await analyzeBestSettings(tool.file);
+    setMode('profile');
+    setFormat(bestFormat);
+    setQuality(bestQuality);
+    setProfileId('balanced');
+    notify({
+      title: 'Smart Suggest applied',
+      message: `Analyzed image and applied optimal settings: ${bestFormat.toUpperCase()} at ${bestQuality} quality.`,
+      tone: 'success'
+    });
+  };
+
   const applyProfile = (nextId: CompressionProfileId) => {
     const profile = findCompressionProfile(nextId);
-    tool.discardOutput();
+
     setProfileId(nextId);
     setQuality(profile.quality);
     setFormat(profile.outputFormat);
@@ -104,7 +149,7 @@ export default function OptimizePage() {
     if (profile.maximumLongEdge) setMaximumLongEdge(profile.maximumLongEdge);
   };
 
-  const compress = async () => {
+  const compress = async (isLive = false) => {
     const result = await tool.process(
       {
         outputFormat,
@@ -123,9 +168,10 @@ export default function OptimizePage() {
           : {}),
         ...(outputFormat === 'jpeg' ? { background: '#ffffff' } : {})
       },
-      'optimized'
+      'optimized',
+      isLive
     );
-    if (!result) return;
+    if (!result || isLive) return;
     notify({
       title:
         result.targetSatisfied === false ? 'Closest safe output created' : 'Compression complete',
@@ -136,6 +182,15 @@ export default function OptimizePage() {
       tone: result.targetSatisfied === false ? 'error' : 'success'
     });
   };
+
+  useEffect(() => {
+    if (!tool.file || !tool.validation?.supportedByConverter) return;
+    const timeout = setTimeout(() => {
+      void compress(true);
+    }, 150);
+    return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tool.file, mode, outputFormat, quality, targetKb, targetResizeMode, requestedDimensions]);
 
   const reset = () => {
     setMode(requestedTarget ? 'target' : 'profile');
@@ -148,7 +203,6 @@ export default function OptimizePage() {
     setMaximumLongEdge(2560);
     setWebOptimized(false);
     setComparison(50);
-    tool.discardOutput();
   };
 
   return (
@@ -172,8 +226,20 @@ export default function OptimizePage() {
       />
 
       {tool.file ? (
-        <div className="optimize-layout phase5-optimize-layout">
+        <div
+          className="optimize-layout phase5-optimize-layout"
+          style={{ '--ambient-color': ambientColor } as React.CSSProperties}
+        >
           <div className="optimize-main">
+            <header className="optimize-controls-header">
+              <button
+                type="button"
+                className="button button--secondary smart-suggest-btn"
+                onClick={() => void applySmartSuggest()}
+              >
+                <Wand2 size={16} /> Smart Suggest
+              </button>
+            </header>
             <div
               className="tool-tabs phase5-mode-tabs"
               role="tablist"
@@ -236,7 +302,6 @@ export default function OptimizePage() {
                     automaticFormat={outputFormat}
                     disabled={tool.status === 'processing'}
                     onChange={(nextFormat) => {
-                      tool.discardOutput();
                       setFormat(nextFormat);
                     }}
                   />
@@ -254,7 +319,6 @@ export default function OptimizePage() {
                       value={quality}
                       disabled={outputFormat === 'png' || tool.status === 'processing'}
                       onChange={(event) => {
-                        tool.discardOutput();
                         setQuality(event.currentTarget.valueAsNumber);
                         setProfileId('balanced');
                       }}
@@ -270,7 +334,6 @@ export default function OptimizePage() {
                       type="checkbox"
                       checked={preserveDimensions}
                       onChange={(event) => {
-                        tool.discardOutput();
                         setPreserveDimensions(event.currentTarget.checked);
                       }}
                     />
@@ -289,7 +352,6 @@ export default function OptimizePage() {
                           className={targetKb === value ? 'selected' : ''}
                           aria-pressed={targetKb === value}
                           onClick={() => {
-                            tool.discardOutput();
                             setTargetKb(value);
                           }}
                         >
@@ -315,7 +377,6 @@ export default function OptimizePage() {
                       disabled={tool.status === 'processing'}
                       hidePng
                       onChange={(nextFormat) => {
-                        tool.discardOutput();
                         setFormat(nextFormat);
                       }}
                     />
@@ -332,7 +393,6 @@ export default function OptimizePage() {
                           value={targetKb}
                           disabled={tool.status === 'processing'}
                           onChange={(event) => {
-                            tool.discardOutput();
                             setTargetKb(
                               Math.max(
                                 10,
@@ -352,7 +412,6 @@ export default function OptimizePage() {
                           name="target-strategy"
                           checked={targetResizeMode === 'quality-only'}
                           onChange={() => {
-                            tool.discardOutput();
                             setTargetResizeMode('quality-only');
                           }}
                         />
@@ -364,7 +423,6 @@ export default function OptimizePage() {
                           name="target-strategy"
                           checked={targetResizeMode === 'allow-resize'}
                           onChange={() => {
-                            tool.discardOutput();
                             setTargetResizeMode('allow-resize');
                           }}
                         />
@@ -376,7 +434,6 @@ export default function OptimizePage() {
                           name="target-strategy"
                           checked={targetResizeMode === 'maximum-visual-quality'}
                           onChange={() => {
-                            tool.discardOutput();
                             setTargetResizeMode('maximum-visual-quality');
                           }}
                         />
@@ -412,7 +469,7 @@ export default function OptimizePage() {
                     checked={webOptimized}
                     onChange={(event) => {
                       const checked = event.currentTarget.checked;
-                      tool.discardOutput();
+
                       setWebOptimized(checked);
                       if (checked) {
                         setFormat('webp');
@@ -434,7 +491,6 @@ export default function OptimizePage() {
                       value={maximumLongEdge}
                       disabled={mode === 'profile' && preserveDimensions}
                       onChange={(event) => {
-                        tool.discardOutput();
                         setMaximumLongEdge(
                           Math.max(320, Math.min(32768, event.currentTarget.valueAsNumber || 320))
                         );
@@ -467,6 +523,11 @@ export default function OptimizePage() {
                   <span className={tool.output.size <= tool.file.size ? 'positive' : 'negative'}>
                     {formatReduction(tool.file.size, tool.output.size)}
                   </span>
+                  {fidelity !== undefined && (
+                    <span className="fidelity-badge" title="Structural Similarity Fidelity">
+                      {fidelity}% Fidelity
+                    </span>
+                  )}
                 </div>
                 <dl className="tool-summary__facts">
                   <div>
@@ -629,41 +690,123 @@ function ComparisonPreview({
   readonly comparison: number;
   readonly onChange: (value: number) => void;
 }) {
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [showDiff, setShowDiff] = useState(false);
   const imageUrl = outputUrl ?? sourceUrl;
+
+  const handleWheel = (e: React.WheelEvent) => {
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    setZoom((z) => Math.min(Math.max(1, z * delta), 10));
+  };
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (e.target instanceof HTMLInputElement) return;
+    setIsPanning(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isPanning || zoom === 1) return;
+    setPan((p) => ({ x: p.x + e.movementX, y: p.y + e.movementY }));
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    setIsPanning(false);
+    e.currentTarget.releasePointerCapture(e.pointerId);
+  };
+
+  const handleDoubleClick = () => {
+    setZoom((z) => (z > 1 ? 1 : 2.5));
+    setPan({ x: 0, y: 0 });
+  };
+
   return (
-    <div className="phase5-comparison" aria-label="Image comparison preview">
-      {sourceUrl ? (
-        <img className="phase5-comparison__original" src={sourceUrl} alt="Original preview" />
-      ) : (
-        <div className="phase5-comparison__placeholder">
-          Preview becomes available after local decoding.
-        </div>
-      )}
-      {imageUrl ? (
+    <div className="phase5-comparison-wrapper">
+      <div className="comparison-toolbar">
+        <label className="diff-toggle" title="Highlight compression artifacts">
+          <input
+            type="checkbox"
+            checked={showDiff}
+            onChange={(e) => setShowDiff(e.target.checked)}
+          />
+          <Wand2 size={14} /> Artifact Diff Mode
+        </label>
+        {zoom > 1 && <span className="zoom-indicator">{Math.round(zoom * 100)}%</span>}
+      </div>
+      <div
+        className="phase5-comparison"
+        aria-label="Image comparison preview"
+        onWheel={handleWheel}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onDoubleClick={handleDoubleClick}
+        style={{ cursor: zoom > 1 ? (isPanning ? 'grabbing' : 'grab') : 'default' }}
+      >
         <div
-          className="phase5-comparison__output"
-          style={{ clipPath: `inset(0 0 0 ${comparison}%)` }}
+          className="comparison-pan-layer"
+          style={{
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+            transformOrigin: 'center',
+            width: '100%',
+            height: '100%'
+          }}
         >
-          <img src={imageUrl} alt="Optimized preview" />
+          {sourceUrl ? (
+            <img
+              className="phase5-comparison__original"
+              src={sourceUrl}
+              alt="Original preview"
+              draggable={false}
+            />
+          ) : (
+            <div className="phase5-comparison__placeholder">
+              Preview becomes available after local decoding.
+            </div>
+          )}
+
+          {imageUrl ? (
+            <div
+              className="phase5-comparison__output"
+              style={{ clipPath: `inset(0 0 0 ${comparison}%)` }}
+            >
+              <img src={imageUrl} alt="Optimized preview" draggable={false} />
+            </div>
+          ) : null}
+
+          {showDiff && imageUrl && sourceUrl && (
+            <div
+              className="phase5-comparison__diff"
+              style={{ clipPath: `inset(0 0 0 ${comparison}%)` }}
+            >
+              <img src={imageUrl} alt="Diff overlay" draggable={false} />
+            </div>
+          )}
         </div>
-      ) : null}
-      <span className="phase5-comparison__label phase5-comparison__label--original">Original</span>
-      <span className="phase5-comparison__label phase5-comparison__label--output">
-        {outputUrl ? 'Optimized' : 'Output preview'}
-      </span>
-      <span
-        className="phase5-comparison__divider"
-        style={{ left: `${comparison}%` }}
-        aria-hidden="true"
-      />
-      <input
-        aria-label="Compare original and optimized image"
-        type="range"
-        min="0"
-        max="100"
-        value={comparison}
-        onChange={(event) => onChange(event.currentTarget.valueAsNumber)}
-      />
+
+        <span className="phase5-comparison__label phase5-comparison__label--original">
+          Original
+        </span>
+        <span className="phase5-comparison__label phase5-comparison__label--output">
+          {outputUrl ? 'Optimized' : 'Output preview'}
+        </span>
+        <span
+          className="phase5-comparison__divider"
+          style={{ left: `${comparison}%` }}
+          aria-hidden="true"
+        />
+        <input
+          aria-label="Compare original and optimized image"
+          type="range"
+          min="0"
+          max="100"
+          step="0.1"
+          value={comparison}
+          onChange={(event) => onChange(event.currentTarget.valueAsNumber)}
+        />
+      </div>
     </div>
   );
 }

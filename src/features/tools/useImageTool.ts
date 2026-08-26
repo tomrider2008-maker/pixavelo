@@ -17,6 +17,7 @@ export type ImageToolStatus =
   | 'validating'
   | 'ready'
   | 'processing'
+  | 'live-processing'
   | 'completed'
   | 'unsupported'
   | 'failed'
@@ -106,14 +107,16 @@ export function useImageTool() {
   }, [revokeOutput]);
 
   const process = useCallback(
-    async (options: NativeProcessingOptions, suffix: string) => {
+    async (options: NativeProcessingOptions, suffix: string, isLive?: boolean) => {
       if (!file || !validation?.supportedByConverter) return undefined;
       const controller = new AbortController();
       controllerRef.current?.abort();
       controllerRef.current = controller;
-      revokeOutput();
-      setError(undefined);
-      setStatus('processing');
+      if (!isLive) {
+        revokeOutput();
+        setError(undefined);
+      }
+      setStatus(isLive ? 'live-processing' : 'processing');
       setStage('preparing');
 
       try {
@@ -127,6 +130,9 @@ export function useImageTool() {
           onProgress: setStage
         });
         const url = URL.createObjectURL(result.blob);
+        if (isLive && outputUrlRef.current) {
+          URL.revokeObjectURL(outputUrlRef.current);
+        }
         outputUrlRef.current = url;
         const nextOutput: ImageToolOutput = {
           ...result,
@@ -140,14 +146,19 @@ export function useImageTool() {
       } catch (cause: unknown) {
         const appError = toAppError(cause, 'ENCODE_FAILED');
         setStage(undefined);
-        setStatus(appError.code === 'CANCELLED' ? 'cancelled' : 'failed');
-        setError(appError.userMessage);
+        if (!isLive) {
+          setStatus(appError.code === 'CANCELLED' ? 'cancelled' : 'failed');
+          setError(appError.userMessage);
+        } else if (appError.code !== 'CANCELLED') {
+          // If live processing fails but isn't cancelled, we revert to ready or keep old output
+          setStatus(output ? 'completed' : 'ready');
+        }
         return undefined;
       } finally {
         if (controllerRef.current === controller) controllerRef.current = undefined;
       }
     },
-    [file, validation, revokeOutput]
+    [file, validation, revokeOutput, output]
   );
 
   const cancel = useCallback(() => controllerRef.current?.abort(), []);
