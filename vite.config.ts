@@ -118,7 +118,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/tests/setup.ts'],
     exclude: ['e2e/**', 'live-e2e/**', 'node_modules/**', 'dist/**'],
-    pool: 'forks',
+    pool: 'threads',
     maxWorkers: 1,
     css: true,
     coverage: {
