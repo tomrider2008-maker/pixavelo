@@ -87,6 +87,16 @@ export default function ConverterPage() {
     [enqueueFiles, notify]
   );
 
+  const processAll = async () => {
+    const result = await queue.processReadyJobs();
+    if (result.attempted === 0) return;
+    notify({
+      title: result.failed === 0 ? 'Local processing finished' : 'Some files need attention',
+      message: `${result.completed} of ${result.attempted} outputs were decoded and verified.`,
+      tone: result.failed === 0 ? 'success' : 'error'
+    });
+  };
+
   // Ctrl+Enter → process all
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
