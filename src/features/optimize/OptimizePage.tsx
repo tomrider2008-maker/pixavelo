@@ -64,19 +64,19 @@ export default function OptimizePage() {
         .then(setAmbientColor)
         .catch(() => setAmbientColor('transparent'));
     } else {
-      setAmbientColor('transparent');
+      queueMicrotask(() => setAmbientColor('transparent'));
     }
   }, [tool.file]);
 
   useEffect(() => {
     if (!tool.file || !tool.output) {
-      setFidelity(undefined);
+      queueMicrotask(() => setFidelity(undefined));
       return;
     }
     // Fetch blob from the output URL to compare with source file
     fetch(tool.output.url)
       .then((res) => res.blob())
-      .then((blob) => calculateVisualFidelity(tool.file!, blob))
+      .then((blob) => calculateVisualFidelity(tool.file as File, blob))
       .then(setFidelity)
       .catch(() => setFidelity(undefined));
   }, [tool.file, tool.output]);
