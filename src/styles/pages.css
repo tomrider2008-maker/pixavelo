@@ -2009,6 +2009,8 @@
 }
 
 .target-size-presets {
+  width: 100%;
+  min-width: 0;
   padding: 17px 18px 0;
 }
 
@@ -2986,20 +2988,20 @@
 /* Hyper-Premium Optimize Styles */
 .phase5-optimize-layout {
   position: relative;
+  isolation: isolate;
 }
 .phase5-optimize-layout::before {
   content: '';
   position: absolute;
-  top: -10%;
-  left: -10%;
-  right: -10%;
-  bottom: -10%;
-  background: var(--ambient-color, transparent);
-  filter: blur(100px);
-  opacity: 0.15;
+  inset: 0;
+  background: radial-gradient(
+    circle at 50% 28%,
+    var(--ambient-color, transparent),
+    transparent 72%
+  );
+  opacity: 0.12;
   z-index: -1;
   pointer-events: none;
-  transition: background 0.5s ease;
 }
 .optimize-controls-header {
   margin-bottom: 16px;
