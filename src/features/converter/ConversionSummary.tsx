@@ -39,8 +39,8 @@ export function ConversionSummary({
           {failed.length > 0 ? ` · ${failed.length} failed` : ''}
         </strong>
         <span>
-          {grew ? '▲' : '▼'} {savedPct}% {grew ? 'growth' : 'saved'} · {formatBytes(Math.abs(savedBytes))} ·{' '}
-          {formatSummary}
+          {grew ? '▲' : '▼'} {savedPct}% {grew ? 'growth' : 'saved'} ·{' '}
+          {formatBytes(Math.abs(savedBytes))} · {formatSummary}
         </span>
       </div>
       <button

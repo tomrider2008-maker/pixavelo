@@ -34,8 +34,7 @@ export function ConversionPreviewModal({
   }, [onClose]);
 
   const sizeDelta = job.output ? job.output.size - job.file.size : 0;
-  const pctChange =
-    job.file.size > 0 ? Math.round((Math.abs(sizeDelta) / job.file.size) * 100) : 0;
+  const pctChange = job.file.size > 0 ? Math.round((Math.abs(sizeDelta) / job.file.size) * 100) : 0;
   const savedOrGrew = sizeDelta < 0 ? 'saved' : 'added';
 
   return (
@@ -109,11 +108,7 @@ export function ConversionPreviewModal({
 
         {job.output ? (
           <footer className="preview-modal__footer">
-            <a
-              className="button button--primary"
-              href={job.output.url}
-              download={filename}
-            >
+            <a className="button button--primary" href={job.output.url} download={filename}>
               <Download size={16} aria-hidden="true" /> Download output
             </a>
             <button type="button" className="button button--secondary" onClick={onClose}>

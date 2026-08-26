@@ -10,14 +10,7 @@ import {
   Trash2,
   X
 } from 'lucide-react';
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type DragEvent
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useNotifications } from '../../components/feedback/Notifications';
 import { createZipBlob } from '../../engine/export/createZip';
@@ -69,9 +62,7 @@ export default function ConverterPage() {
   // Show summary when all jobs reach a terminal state
   const allSettled =
     queue.jobs.length > 0 &&
-    queue.jobs.every((j) =>
-      ['completed', 'failed', 'cancelled', 'unsupported'].includes(j.status)
-    );
+    queue.jobs.every((j) => ['completed', 'failed', 'cancelled', 'unsupported'].includes(j.status));
   useEffect(() => {
     if (allSettled) setShowSummary(true);
   }, [allSettled]);
@@ -220,9 +211,7 @@ export default function ConverterPage() {
     } else if (sortOrder === 'size-desc') {
       all.sort((a, b) => b.file.size - a.file.size);
     } else if (sortOrder === 'format') {
-      all.sort((a, b) =>
-        (a.validation?.format ?? '').localeCompare(b.validation?.format ?? '')
-      );
+      all.sort((a, b) => (a.validation?.format ?? '').localeCompare(b.validation?.format ?? ''));
     } else if (sortOrder === 'status') {
       const order: Record<string, number> = {
         processing: 0,
@@ -420,10 +409,7 @@ export default function ConverterPage() {
             <>
               {/* Session summary */}
               {showSummary && allSettled && (
-                <ConversionSummary
-                  jobs={queue.jobs}
-                  onDismiss={() => setShowSummary(false)}
-                />
+                <ConversionSummary jobs={queue.jobs} onDismiss={() => setShowSummary(false)} />
               )}
 
               {/* Filter tabs + sort control */}
@@ -616,9 +602,7 @@ function countStatuses(jobs: readonly ConversionJob[]) {
     ready: jobs.filter((job) => job.status === 'ready').length,
     active: jobs.filter((job) => job.status === 'processing').length,
     completed: jobs.filter((job) => job.status === 'completed').length,
-    issues: jobs.filter((job) =>
-      ['failed', 'unsupported', 'cancelled'].includes(job.status)
-    ).length
+    issues: jobs.filter((job) => ['failed', 'unsupported', 'cancelled'].includes(job.status)).length
   };
 }
 

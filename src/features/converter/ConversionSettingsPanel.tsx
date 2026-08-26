@@ -2,12 +2,7 @@ import { Check, Info, Save, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import type { CoreImageFormat } from '../../types/images';
 import { conversionPresets, identifyPreset, settingsForPreset } from './presets';
-import {
-  deletePreset,
-  listSavedPresets,
-  savePreset,
-  type SavedPreset
-} from './savedPresets';
+import { deletePreset, listSavedPresets, savePreset, type SavedPreset } from './savedPresets';
 import type { ConversionSettings } from './types';
 
 export function ConversionSettingsPanel({

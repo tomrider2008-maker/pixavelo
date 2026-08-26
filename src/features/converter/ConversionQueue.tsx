@@ -152,8 +152,7 @@ function ConversionRow({
       : null;
 
   // Thumbnail: show output when completed, otherwise source
-  const thumbnailSrc =
-    job.status === 'completed' && job.output ? job.output.url : job.previewUrl;
+  const thumbnailSrc = job.status === 'completed' && job.output ? job.output.url : job.previewUrl;
   const thumbnailClickable = job.status === 'completed' && job.output;
 
   const copyToClipboard = async () => {
@@ -311,7 +310,13 @@ function ConversionRow({
             <button
               className={`icon-button icon-button--small${copyState === 'copied' ? ' icon-button--success' : copyState === 'error' ? ' icon-button--error' : ''}`}
               type="button"
-              title={copyState === 'copied' ? 'Copied!' : copyState === 'error' ? 'Copy failed' : 'Copy to clipboard'}
+              title={
+                copyState === 'copied'
+                  ? 'Copied!'
+                  : copyState === 'error'
+                    ? 'Copy failed'
+                    : 'Copy to clipboard'
+              }
               onClick={() => void copyToClipboard()}
             >
               {copyState === 'copied' ? <Check size={15} /> : <Clipboard size={15} />}

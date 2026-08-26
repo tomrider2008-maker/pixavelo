@@ -1,11 +1,7 @@
 ﻿import type { ConversionSettings } from './types';
 
 export type ConversionPresetId =
-  | 'balanced-jpeg'
-  | 'web-delivery'
-  | 'lossless-png'
-  | 'max-compat'
-  | 'custom';
+  'balanced-jpeg' | 'web-delivery' | 'lossless-png' | 'max-compat' | 'custom';
 
 export interface ConversionPreset {
   readonly id: Exclude<ConversionPresetId, 'custom'>;
