@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, react-hooks/exhaustive-deps */
-/* eslint-disable @typescript-eslint/prefer-optional-chain */
 import type { CoreImageFormat } from '../types/images';
 
 export async function calculateVisualFidelity(sourceBlob: Blob, outputBlob: Blob): Promise<number> {
