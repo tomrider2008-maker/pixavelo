@@ -101,10 +101,24 @@ jobs:
           --commit-message "${{ github.event.head_commit.message || format('Preview {0}', github.sha) }}"
           --commit-dirty=false
           | tee .artifacts/operations/preview-deployment.txt
+      - name: Resolve immutable preview URL
+        shell: bash
+        run: |
+          preview_url="$(grep -Eo 'https://[a-z0-9]{8,}\.pixavelo\.pages\.dev' .artifacts/operations/preview-deployment.txt | head -n 1)"
+          test -n "$preview_url"
+          echo "PIXAVELO_PREVIEW_URL=$preview_url" >> "$GITHUB_ENV"
+      - name: Verify immutable branch preview
+        run: >-
+          node scripts/verify-deployment.mjs
+          --base-url "$PIXAVELO_PREVIEW_URL"
+          --expected-revision "$GITHUB_SHA"
+          --report .artifacts/operations/preview-verification.json
       - if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: preview-deployment-${{ github.sha }}
-          path: .artifacts/operations/preview-deployment.txt
+          path: |
+            .artifacts/operations/preview-deployment.txt
+            .artifacts/operations/preview-verification.json
           if-no-files-found: warn
           retention-days: 30

@@ -56,7 +56,7 @@ The branch preview uses the guarded release workflow and can never target the pr
 gh workflow run release.yml --ref phase14/premium-ui -f target=preview -f confirmation=PREVIEW
 ```
 
-The preview job uses a dedicated GitHub `preview` environment containing a least-privilege Cloudflare Pages token scoped to the Pixavelo account. Its workflow guard rejects `main`, and Wrangler receives the non-main Git ref as its Cloudflare Pages branch. No production alias, rollback, or `--branch main` operation is executed.
+The preview job uses a dedicated GitHub `preview` environment containing a least-privilege Cloudflare Pages token scoped to the Pixavelo account. Its workflow guard rejects `main`, Wrangler receives the non-main Git ref as its Cloudflare Pages branch, and the job verifies the immutable preview URL against the exact Git revision before retaining the deployment evidence. No production alias, rollback, or `--branch main` operation is executed.
 
 ## Activation boundary
 
