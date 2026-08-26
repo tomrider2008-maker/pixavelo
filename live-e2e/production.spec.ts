@@ -236,7 +236,7 @@ test('production Phase 5 compression and resize routes produce verified files', 
   await expect(page.getByRole('spinbutton', { name: 'Height' })).toHaveValue('4');
   await page.getByRole('button', { name: '90°' }).click();
   await page.getByRole('button', { name: 'Apply resize' }).click();
-  const transformedLink = page.getByRole('link', { name: 'Download resized image' });
+  const transformedLink = page.getByRole('link', { name: 'Download image' });
   await expect(transformedLink).toBeVisible({ timeout: 20_000 });
   const transformedDownload = page.waitForEvent('download');
   await transformedLink.click();
