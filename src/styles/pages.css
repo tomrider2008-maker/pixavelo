@@ -1118,6 +1118,7 @@
 .converter-summary__actions,
 .converter-summary__privacy {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 14px;
 }

@@ -154,6 +154,15 @@ ul {
   border-color: color-mix(in srgb, var(--color-accent) 58%, var(--color-border));
 }
 
+.button--quiet {
+  background: transparent;
+  box-shadow: none;
+}
+
+.button--quiet:hover {
+  background: var(--color-surface-muted);
+}
+
 .button--inline {
   align-self: flex-start;
 }
