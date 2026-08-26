@@ -98,6 +98,11 @@ export default function OptimizePage() {
     targetKb as (typeof TARGET_SIZE_PRESETS)[number]
   );
 
+  const invalidateOutput = () => {
+    tool.discardOutput();
+    setFidelity(undefined);
+  };
+
   const requestedDimensions = useMemo(() => {
     const dimensions = tool.validation?.dimensions;
     if (!dimensions) return undefined;
@@ -109,6 +114,7 @@ export default function OptimizePage() {
   }, [maximumLongEdge, mode, preserveDimensions, targetResizeMode, tool.validation?.dimensions]);
 
   const changeMode = (nextMode: CompressionMode) => {
+    invalidateOutput();
     if (nextMode === 'target' && format === 'png') setFormat('webp');
     setMode(nextMode);
   };
@@ -123,6 +129,7 @@ export default function OptimizePage() {
 
   const applySmartSuggest = async () => {
     if (!tool.file) return;
+    invalidateOutput();
     const { format: bestFormat, quality: bestQuality } = await analyzeBestSettings(tool.file);
     setMode('profile');
     setFormat(bestFormat);
@@ -138,6 +145,7 @@ export default function OptimizePage() {
   const applyProfile = (nextId: CompressionProfileId) => {
     const profile = findCompressionProfile(nextId);
 
+    invalidateOutput();
     setProfileId(nextId);
     setQuality(profile.quality);
     setFormat(profile.outputFormat);
@@ -146,7 +154,7 @@ export default function OptimizePage() {
     if (profile.maximumLongEdge) setMaximumLongEdge(profile.maximumLongEdge);
   };
 
-  const compress = async (isLive = false) => {
+  const compress = async () => {
     const result = await tool.process(
       {
         outputFormat,
@@ -165,10 +173,9 @@ export default function OptimizePage() {
           : {}),
         ...(outputFormat === 'jpeg' ? { background: '#ffffff' } : {})
       },
-      'optimized',
-      isLive
+      'optimized'
     );
-    if (!result || isLive) return;
+    if (!result) return;
     notify({
       title:
         result.targetSatisfied === false ? 'Closest safe output created' : 'Compression complete',
@@ -180,16 +187,8 @@ export default function OptimizePage() {
     });
   };
 
-  useEffect(() => {
-    if (!tool.file || !tool.validation?.supportedByConverter) return;
-    const timeout = setTimeout(() => {
-      void compress(true);
-    }, 150);
-    return () => clearTimeout(timeout);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tool.file, mode, outputFormat, quality, targetKb, targetResizeMode, requestedDimensions]);
-
   const reset = () => {
+    invalidateOutput();
     setMode(requestedTarget ? 'target' : 'profile');
     setProfileId('balanced');
     setFormat('keep');
@@ -299,6 +298,7 @@ export default function OptimizePage() {
                     automaticFormat={outputFormat}
                     disabled={tool.status === 'processing'}
                     onChange={(nextFormat) => {
+                      invalidateOutput();
                       setFormat(nextFormat);
                     }}
                   />
@@ -316,6 +316,7 @@ export default function OptimizePage() {
                       value={quality}
                       disabled={outputFormat === 'png' || tool.status === 'processing'}
                       onChange={(event) => {
+                        invalidateOutput();
                         setQuality(event.currentTarget.valueAsNumber);
                         setProfileId('balanced');
                       }}
@@ -331,6 +332,7 @@ export default function OptimizePage() {
                       type="checkbox"
                       checked={preserveDimensions}
                       onChange={(event) => {
+                        invalidateOutput();
                         setPreserveDimensions(event.currentTarget.checked);
                       }}
                     />
@@ -349,6 +351,7 @@ export default function OptimizePage() {
                           className={targetKb === value ? 'selected' : ''}
                           aria-pressed={targetKb === value}
                           onClick={() => {
+                            invalidateOutput();
                             setTargetKb(value);
                           }}
                         >
@@ -374,6 +377,7 @@ export default function OptimizePage() {
                       disabled={tool.status === 'processing'}
                       hidePng
                       onChange={(nextFormat) => {
+                        invalidateOutput();
                         setFormat(nextFormat);
                       }}
                     />
@@ -390,6 +394,7 @@ export default function OptimizePage() {
                           value={targetKb}
                           disabled={tool.status === 'processing'}
                           onChange={(event) => {
+                            invalidateOutput();
                             setTargetKb(
                               Math.max(
                                 10,
@@ -409,6 +414,7 @@ export default function OptimizePage() {
                           name="target-strategy"
                           checked={targetResizeMode === 'quality-only'}
                           onChange={() => {
+                            invalidateOutput();
                             setTargetResizeMode('quality-only');
                           }}
                         />
@@ -420,6 +426,7 @@ export default function OptimizePage() {
                           name="target-strategy"
                           checked={targetResizeMode === 'allow-resize'}
                           onChange={() => {
+                            invalidateOutput();
                             setTargetResizeMode('allow-resize');
                           }}
                         />
@@ -431,6 +438,7 @@ export default function OptimizePage() {
                           name="target-strategy"
                           checked={targetResizeMode === 'maximum-visual-quality'}
                           onChange={() => {
+                            invalidateOutput();
                             setTargetResizeMode('maximum-visual-quality');
                           }}
                         />
@@ -467,6 +475,7 @@ export default function OptimizePage() {
                     onChange={(event) => {
                       const checked = event.currentTarget.checked;
 
+                      invalidateOutput();
                       setWebOptimized(checked);
                       if (checked) {
                         setFormat('webp');
@@ -488,6 +497,7 @@ export default function OptimizePage() {
                       value={maximumLongEdge}
                       disabled={mode === 'profile' && preserveDimensions}
                       onChange={(event) => {
+                        invalidateOutput();
                         setMaximumLongEdge(
                           Math.max(320, Math.min(32768, event.currentTarget.valueAsNumber || 320))
                         );
