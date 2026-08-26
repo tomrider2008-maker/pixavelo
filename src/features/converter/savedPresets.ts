@@ -1,4 +1,4 @@
-﻿import type { ConversionSettings } from './types';
+import type { ConversionSettings } from './types';
 
 const STORAGE_KEY = 'pixavelo-converter-saved-presets';
 const MAX_SAVED_PRESETS = 10;
@@ -26,11 +26,11 @@ function isValidSavedPreset(item: unknown): item is SavedPreset {
   if (!item || typeof item !== 'object') return false;
   const p = item as Record<string, unknown>;
   return (
-    typeof p['id'] === 'string' &&
-    typeof p['label'] === 'string' &&
-    typeof p['savedAt'] === 'number' &&
-    typeof p['settings'] === 'object' &&
-    p['settings'] !== null
+    typeof p.id === 'string' &&
+    typeof p.label === 'string' &&
+    typeof p.savedAt === 'number' &&
+    typeof p.settings === 'object' &&
+    p.settings !== null
   );
 }
 

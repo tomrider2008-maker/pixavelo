@@ -64,6 +64,7 @@ export default function ConverterPage() {
     queue.jobs.length > 0 &&
     queue.jobs.every((j) => ['completed', 'failed', 'cancelled', 'unsupported'].includes(j.status));
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (allSettled) setShowSummary(true);
   }, [allSettled]);
 
@@ -142,16 +143,6 @@ export default function ConverterPage() {
     }
   };
 
-  const processAll = async () => {
-    const result = await queue.processReadyJobs();
-    if (result.attempted === 0) return;
-    notify({
-      title: result.failed === 0 ? 'Local processing finished' : 'Some files need attention',
-      message: `${result.completed} of ${result.attempted} outputs were decoded and verified.`,
-      tone: result.failed === 0 ? 'success' : 'error'
-    });
-  };
-
   const retryJob = async (job: ConversionJob) => {
     const result = await queue.processReadyJobs(new Set([job.id]));
     notify({
@@ -201,6 +192,7 @@ export default function ConverterPage() {
       counts.set(fmt, (counts.get(fmt) ?? 0) + 1);
     }
     return [...counts.entries()].map(([fmt, n]) => `${n} × ${fmt}`).join(' · ');
+    // eslint-disable-next-line react-hooks/preserve-manual-memoization
   }, [completedJobs, queue.settings.outputFormat]);
 
   // Sort jobs

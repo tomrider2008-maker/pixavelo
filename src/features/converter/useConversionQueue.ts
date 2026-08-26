@@ -141,6 +141,7 @@ export function useConversionQueue(
   // Keep a ref to current settings for use inside callbacks
   const settingsRef = useRef(settings);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/immutability
     settingsRef.current = settings;
   }, [settings]);
 
@@ -174,6 +175,7 @@ export function useConversionQueue(
   const setSettings = useCallback(
     (next: ConversionSettings, invalidate = true) => {
       setSettingsState(next);
+      // eslint-disable-next-line react-hooks/immutability
       settingsRef.current = next;
       if (invalidate) invalidateOutputs();
     },
