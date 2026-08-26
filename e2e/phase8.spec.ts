@@ -72,9 +72,15 @@ test('Phase 8 mobile keeps scan, inspector, policy and export controls reachable
   await expect(page.getByRole('tablist', { name: 'Metadata sections' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Privacy controls' })).toBeVisible();
   await expect(page.locator('.privacy-export')).toContainText('Remove location metadata');
-  await expect(page.getByRole('navigation', { name: 'Mobile navigation' })).toContainText(
-    'Privacy'
-  );
+  const mobileNavigation = page.getByRole('navigation', { name: 'Mobile navigation' });
+  const more = mobileNavigation.getByRole('button', { name: 'More', exact: true });
+  await expect(more).toHaveAttribute('aria-current', 'page');
+  await more.click();
+  const navigationDrawer = page.getByRole('complementary', { name: 'Primary navigation' });
+  await expect(navigationDrawer).toBeVisible();
+  await expect(
+    navigationDrawer.getByRole('link', { name: 'Privacy', exact: true })
+  ).toHaveAttribute('aria-current', 'page');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true
   );

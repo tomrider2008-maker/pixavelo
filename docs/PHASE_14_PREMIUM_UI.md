@@ -1,6 +1,6 @@
 # Phase 14 — premium interface activation
 
-Status: branch implementation; production activation is not authorized  
+Status: owner authorization received 2026-08-26; production activation remains evidence-gated
 Branch: `phase14/premium-ui`  
 Commercial impact: none; no paid dependency, service, font, account, upload, or telemetry was added
 
@@ -60,4 +60,4 @@ The preview job uses a dedicated GitHub `preview` environment containing a least
 
 ## Activation boundary
 
-The Phase 12 expansion gate still blocks a production deployment. Phase 14 may be committed, pushed, and deployed only to a non-production Cloudflare Pages branch preview. Production must remain at its certified Phase 12 revision until the external expansion approval is recorded and the complete release gate passes on the exact release commit.
+The product owner authorized proceeding toward production in the active Codex task on 2026-08-26. That authorization satisfies the human approval step but does not waive the Phase 12 evidence requirements. Production must remain at its certified Phase 12 revision until the complete release gate passes on the exact release commit, the physical-device matrix has real evidence, and the continuous 30-day SLO record is claimable without a privacy or release-integrity miss.
