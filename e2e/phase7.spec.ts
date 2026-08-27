@@ -118,9 +118,8 @@ test('Editor adjustment labels stay clear of their sliders on compact desktop pa
   const slider = temperature.getByRole('slider');
   const [labelBox, sliderBox] = await Promise.all([label.boundingBox(), slider.boundingBox()]);
 
-  expect(labelBox).not.toBeNull();
-  expect(sliderBox).not.toBeNull();
-  expect(labelBox!.x + labelBox!.width).toBeLessThanOrEqual(sliderBox!.x + 1);
+  if (!labelBox || !sliderBox) throw new Error('Temperature control geometry was unavailable.');
+  expect(labelBox.x + labelBox.width).toBeLessThanOrEqual(sliderBox.x + 1);
 
   await slider.press('ArrowRight');
   await expect(temperature.locator('output')).toHaveText('1');
