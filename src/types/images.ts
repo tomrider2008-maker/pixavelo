@@ -1,3 +1,5 @@
+import type { EditorCutoutSettings, EditorPixelOperation } from './editorPixelEdits';
+
 export type ImageFormat =
   | 'jpeg'
   | 'png'
@@ -120,6 +122,8 @@ export interface NativeProcessingOptions {
   readonly maximumResizePasses?: number;
   readonly watermark?: TextWatermarkOptions;
   readonly adjustments?: ImageAdjustments;
+  readonly pixelOperations?: readonly EditorPixelOperation[];
+  readonly cutout?: EditorCutoutSettings;
 }
 
 export interface ProcessedImage {

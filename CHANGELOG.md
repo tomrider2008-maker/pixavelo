@@ -6,6 +6,11 @@ All notable Pixavelo releases are recorded here. Versions follow semantic versio
 
 ### Added
 
+- Non-AI Remove & Heal with adjustable brush hardness/feather, nearby-pixel reconstruction, clone sampling, mask
+  preview and one-step non-destructive history application.
+- Non-AI Background Cutout with connected color selection, Keep/Remove refinement, smooth/feather/edge controls and
+  transparent, solid-color or blurred local backgrounds.
+- Full-resolution downloaded-pixel browser proofs for healing and alpha cutout, plus a 13 MP bounded-work safety gate.
 - Premium first-run welcome guide with direct studio navigation, accessible focus management and explicit local-only
   privacy guarantees.
 - Smart Intake analysis that validates files locally, explains its recommendation and hands approved images to the
@@ -32,6 +37,8 @@ All notable Pixavelo releases are recorded here. Versions follow semantic versio
 - Primary actions switch disabled/enabled color pairs atomically so WebKit never observes transient low contrast.
 - Sidebar Settings and Help stay pinned above the status bar on short laptop viewports while the primary tool list
   remains keyboard-accessible through contained scrolling.
+- The loaded Editor no longer enforces a 700 px minimum viewport, keeping its inspector actions and metadata above the
+  status bar on compact laptop screens.
 
 ## [1.0.0] - 2026-08-25
 

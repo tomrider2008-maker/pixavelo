@@ -3,6 +3,9 @@ import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import type { ImageCrop } from '../../types/images';
 import { transformCrop, type CropHandle } from '../resize/cropMath';
 import type { DecodedEditorSource } from './decodeEditorSource';
+import { PixelEditCanvasOverlay } from './PixelEditCanvasOverlay';
+import type { EditorPixelOperation, EditorPoint } from '../../types/editorPixelEdits';
+import type { EditorCutoutToolState, EditorRemoveToolState } from './pixelToolState';
 import { renderEditorPreview } from './renderEditorPreview';
 import type { EditorCompareMode, EditorRecipe, EditorTool, EditorZoom } from './types';
 
@@ -17,6 +20,12 @@ interface EditorCanvasProps {
   readonly onCompareMode: (mode: EditorCompareMode) => void;
   readonly onZoom: (zoom: EditorZoom) => void;
   readonly onCropChange: (crop: ImageCrop) => void;
+  readonly removeTool: EditorRemoveToolState;
+  readonly cutoutTool: EditorCutoutToolState;
+  readonly pendingPixelOperations: readonly EditorPixelOperation[];
+  readonly pixelEditingSupported: boolean;
+  readonly onPixelOperation: (operation: EditorPixelOperation) => void;
+  readonly onCloneSource: (point: EditorPoint | undefined) => void;
 }
 
 interface CropDrag {
@@ -48,7 +57,13 @@ export function EditorCanvas({
   onComparison,
   onCompareMode,
   onZoom,
-  onCropChange
+  onCropChange,
+  removeTool,
+  cutoutTool,
+  pendingPixelOperations,
+  pixelEditingSupported,
+  onPixelOperation,
+  onCloneSource
 }: EditorCanvasProps) {
   const originalRef = useRef<HTMLCanvasElement>(null);
   const outputRef = useRef<HTMLCanvasElement>(null);
@@ -57,6 +72,8 @@ export function EditorCanvas({
   const panDragRef = useRef<PanDrag | undefined>(undefined);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const cropWorkspace = activeTool === 'crop';
+  const pixelWorkspace = activeTool === 'remove' || activeTool === 'cutout';
+  const effectiveCompareMode = pixelWorkspace ? 'output' : compareMode;
 
   useEffect(() => {
     const original = originalRef.current;
@@ -66,15 +83,15 @@ export function EditorCanvas({
       renderEditorPreview(source, original, recipe, {
         original: true,
         cropWorkspace,
-        maximumDimension: 1800
+        maximumDimension: pixelWorkspace ? 640 : 1800
       });
       renderEditorPreview(source, output, recipe, {
         cropWorkspace,
-        maximumDimension: 1800
+        maximumDimension: pixelWorkspace ? 640 : 1800
       });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [cropWorkspace, recipe, source]);
+  }, [cropWorkspace, pixelWorkspace, recipe, source]);
 
   const onCropPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (!cropWorkspace) return;
@@ -117,7 +134,7 @@ export function EditorCanvas({
   };
 
   const onStagePointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    if (cropWorkspace || zoom === 'fit' || zoom === 50 || zoom === 100) return;
+    if (cropWorkspace || pixelWorkspace || zoom === 'fit' || zoom === 50 || zoom === 100) return;
     panDragRef.current = {
       pointerId: event.pointerId,
       clientX: event.clientX,
@@ -146,7 +163,7 @@ export function EditorCanvas({
   };
 
   const zoomScale = zoom === 'fit' ? 1 : zoom / 100;
-  const outputClip = compareMode === 'slider' ? `inset(0 0 0 ${comparison}%)` : undefined;
+  const outputClip = effectiveCompareMode === 'slider' ? `inset(0 0 0 ${comparison}%)` : undefined;
   const selectZoom = (nextZoom: EditorZoom) => {
     if (nextZoom === 'fit' || nextZoom === 50 || nextZoom === 100) setPan({ x: 0, y: 0 });
     onZoom(nextZoom);
@@ -155,7 +172,7 @@ export function EditorCanvas({
   return (
     <section className="editor-canvas-region" aria-label="Image inspection canvas">
       <div
-        className={`editor-stage editor-stage--${compareMode}${zoomScale > 1 ? ' editor-stage--pannable' : ''}`}
+        className={`editor-stage editor-stage--${effectiveCompareMode}${zoomScale > 1 && !pixelWorkspace ? ' editor-stage--pannable' : ''}`}
         onPointerDown={onStagePointerDown}
         onPointerMove={onStagePointerMove}
         onPointerUp={endPan}
@@ -164,7 +181,16 @@ export function EditorCanvas({
         <div
           ref={surfaceRef}
           className={`editor-image-surface${cropWorkspace ? ' editor-image-surface--crop' : ''}`}
-          style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoomScale})` }}
+          style={{
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoomScale})`,
+            ...(activeTool === 'cutout' && recipe.cutout.background === 'transparent'
+              ? {
+                  backgroundImage:
+                    'conic-gradient(#202b3a 25%,#111927 0 50%,#202b3a 0 75%,#111927 0)',
+                  backgroundSize: '18px 18px'
+                }
+              : {})
+          }}
           data-testid="editor-preview-surface"
         >
           <canvas
@@ -179,7 +205,7 @@ export function EditorCanvas({
             style={outputClip ? { clipPath: outputClip } : undefined}
           />
 
-          {compareMode === 'slider' ? (
+          {effectiveCompareMode === 'slider' ? (
             <>
               <span
                 className="editor-compare-divider"
@@ -227,23 +253,45 @@ export function EditorCanvas({
               ))}
             </div>
           ) : null}
+
+          {pixelWorkspace && pixelEditingSupported ? (
+            <PixelEditCanvasOverlay
+              activeTool={activeTool}
+              referenceDimension={Math.max(
+                1,
+                Math.min(
+                  recipe.canvas.enabled ? recipe.canvas.width : recipe.crop.width,
+                  recipe.canvas.enabled ? recipe.canvas.height : recipe.crop.height
+                )
+              )}
+              remove={removeTool}
+              cutout={cutoutTool}
+              pending={pendingPixelOperations}
+              onOperation={onPixelOperation}
+              onCloneSource={onCloneSource}
+            />
+          ) : null}
         </div>
       </div>
 
       <footer className="editor-viewbar">
-        <label className="editor-compare-select">
-          <span className="sr-only">Comparison mode</span>
-          <Columns2 size={15} aria-hidden="true" />
-          <select
-            value={compareMode}
-            onChange={(event) => onCompareMode(event.currentTarget.value as EditorCompareMode)}
-          >
-            <option value="slider">Compare: Slider</option>
-            <option value="side-by-side">Side-by-side</option>
-            <option value="original">Original only</option>
-            <option value="output">Output only</option>
-          </select>
-        </label>
+        {!pixelWorkspace ? (
+          <label className="editor-compare-select">
+            <span className="sr-only">Comparison mode</span>
+            <Columns2 size={15} aria-hidden="true" />
+            <select
+              value={compareMode}
+              onChange={(event) => onCompareMode(event.currentTarget.value as EditorCompareMode)}
+            >
+              <option value="slider">Compare: Slider</option>
+              <option value="side-by-side">Side-by-side</option>
+              <option value="original">Original only</option>
+              <option value="output">Output only</option>
+            </select>
+          </label>
+        ) : (
+          <strong>Editing output</strong>
+        )}
         <div className="editor-zoom-options" aria-label="Preview zoom">
           {zoomOptions.map((value) => (
             <button

@@ -13,6 +13,7 @@ import { outputHasMetadata } from '../validation/outputMetadata';
 import { stripOutputMetadata } from '../validation/stripOutputMetadata';
 import { drawTextWatermark } from './drawWatermark';
 import { applyImageAdjustments, buildCanvasFilter } from './imageAdjustments';
+import { applyPixelEdits } from './applyPixelEdits';
 
 interface MainThreadProcessingInput {
   readonly file: Blob;
@@ -86,6 +87,13 @@ export async function processImageOnMainThread(
       geometry.outputWidth,
       geometry.outputHeight,
       input.options.adjustments
+    );
+    applyPixelEdits(
+      context,
+      geometry.outputWidth,
+      geometry.outputHeight,
+      input.options.pixelOperations,
+      input.options.cutout
     );
     drawTextWatermark(
       context,

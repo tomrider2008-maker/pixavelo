@@ -53,7 +53,9 @@ certification controls.
   verified outputs, saved local presets, duplicate-safe names and virtualized queues tested with 200+ files.
 - A non-destructive editor whose immutable transformation recipe supports crop/aspect crop, arbitrary and quarter-turn
   rotation, horizontal/vertical flips, canvas sizing, exposure, brightness, contrast, highlights, shadows,
-  saturation, temperature, tint, gamma, sharpness, blur, grayscale and sepia.
+  saturation, temperature, tint, gamma, sharpness, blur, grayscale and sepia. Local Remove & Heal adds deterministic
+  boundary repair and clone sampling; Background Cutout adds color selection, Keep/Remove refinement, edge controls
+  and transparent, solid-color or blurred backgrounds without AI, uploads or paid APIs.
 - Bounded undo/redo history with reset-current and restore-original actions, standard keyboard shortcuts, original,
   output, slider and side-by-side comparisons, plus Fit/50%/100%/200%/400% zoom and pan.
 - Preview rendering from retained source pixels without intermediate compression. The selected output format is

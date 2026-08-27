@@ -144,8 +144,12 @@ dated and linked because external requirements can change independently of a rel
 
 The Phase 7 editor owns the decoded source and an immutable transformation recipe inside the `/edit` route. Recipe
 snapshots contain normalized crop bounds, arbitrary rotation, flips, canvas settings and pixel adjustments; they do
-not contain re-encoded intermediates. Preview canvases always render from the retained original, so repeated edits do
-not accumulate compression loss.
+not contain re-encoded intermediates. Deterministic pixel operations are normalized to transformed output space and
+record Remove & Heal strokes, clone sources, color-cutout seeds and Keep/Remove refinement strokes. Preview and export
+share the same boundary-fill, clone, selection and mask-compositing implementation, so the responsive preview and
+full-resolution result follow one recipe. Full-resolution local retouch is bounded at 13 million output pixels before
+pixel buffers are allocated. Preview canvases always render from the retained original, so repeated edits do not
+accumulate compression loss.
 
 Undo and redo are reducer transitions across bounded `past`, `present` and `future` recipe stacks. Continuous slider
 input merges into a single history entry during a short interaction window, while discrete geometry and filter
@@ -155,8 +159,10 @@ reversible transition back to the default recipe.
 Comparison and zoom are view state, not recipe state. Original-only, output-only, slider and side-by-side views share
 the same source/recipe pair, while Fit/50%/100%/200%/400% zoom and pan never change exported dimensions. Only an
 explicit export maps the current recipe into the shared worker/main-thread pipeline. That final pass applies geometry,
-adjustments, metadata removal, native encoding, MIME signature validation and decoded-dimension validation before a
-download URL is exposed.
+adjustments, pixel operations, metadata removal, native encoding, MIME signature validation and decoded-dimension
+validation before a download URL is exposed. Pending strokes remain view state until Apply, block export to prevent a
+preview/result mismatch, and enter history as one reversible action. No image segmentation model or remote processor
+is used.
 
 ## Metadata privacy model
 

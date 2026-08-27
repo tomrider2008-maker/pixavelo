@@ -6,6 +6,7 @@ import {
 import { resolveTransformGeometry } from '../../engine/pipeline/geometry';
 import type { EditorRecipe } from './types';
 import type { DecodedEditorSource } from './decodeEditorSource';
+import { applyPixelEdits } from '../../engine/pipeline/applyPixelEdits';
 
 interface RenderEditorPreviewOptions {
   readonly maximumDimension?: number;
@@ -77,5 +78,14 @@ export function renderEditorPreview(
   );
   context.restore();
   applyImageAdjustments(context, canvas.width, canvas.height, adjustments);
+  if (!options.original) {
+    applyPixelEdits(
+      context,
+      canvas.width,
+      canvas.height,
+      previewRecipe.pixelOperations,
+      previewRecipe.cutout
+    );
+  }
   return { geometry, scale };
 }

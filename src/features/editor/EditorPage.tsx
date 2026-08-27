@@ -2,12 +2,14 @@ import {
   Columns2,
   Crop,
   Download,
+  Eraser,
   FlipHorizontal2,
   Frame,
   ImagePlus,
   LoaderCircle,
   Redo2,
   RotateCw,
+  ScanLine,
   Sparkles,
   SlidersHorizontal,
   Undo2
@@ -30,6 +32,19 @@ import {
   recipeToProcessingOptions,
   resetToolRecipe
 } from './recipe';
+import {
+  isCutoutOperation,
+  isRemoveOperation,
+  MAX_PIXEL_EDIT_PIXELS,
+  type EditorPixelOperation,
+  type EditorPoint
+} from '../../types/editorPixelEdits';
+import {
+  createEditorCutoutToolState,
+  createEditorRemoveToolState,
+  type EditorCutoutToolState,
+  type EditorRemoveToolState
+} from './pixelToolState';
 import type {
   EditorCompareMode,
   EditorExportSettings,
@@ -44,7 +59,9 @@ const tools = [
   { id: 'rotate', label: 'Rotate', icon: RotateCw },
   { id: 'flip', label: 'Flip', icon: FlipHorizontal2 },
   { id: 'canvas', label: 'Canvas', icon: Frame },
-  { id: 'adjust', label: 'Adjust', icon: SlidersHorizontal }
+  { id: 'adjust', label: 'Adjust', icon: SlidersHorizontal },
+  { id: 'remove', label: 'Remove', icon: Eraser },
+  { id: 'cutout', label: 'Cutout', icon: ScanLine }
 ] as const;
 
 const stageLabels = {
@@ -67,6 +84,11 @@ export default function EditorPage() {
   const [compareMode, setCompareMode] = useState<EditorCompareMode>('slider');
   const [comparison, setComparison] = useState(50);
   const [zoom, setZoom] = useState<EditorZoom>('fit');
+  const [removeTool, setRemoveTool] = useState(createEditorRemoveToolState);
+  const [cutoutTool, setCutoutTool] = useState(() => createEditorCutoutToolState(1));
+  const [pendingPixelOperations, setPendingPixelOperations] = useState<
+    readonly EditorPixelOperation[]
+  >([]);
   const [exportSettings, setExportSettings] = useState<EditorExportSettings>({
     format: 'webp',
     quality: 82
@@ -78,6 +100,12 @@ export default function EditorPage() {
   const sourceFile = tool.file;
   const sourceValidation = tool.validation;
   const discardOutput = tool.discardOutput;
+  const activePendingPixelOperations = pendingPixelOperations.filter((operation) =>
+    operationMatchesTool(operation, activeTool)
+  );
+  const cutoutSettingsDirty = !sameCutoutSettings(cutoutTool.settings, history.present.cutout);
+  const activePixelSettingsDirty = activeTool === 'cutout' && cutoutSettingsDirty;
+  const hasUnappliedPixelEdits = pendingPixelOperations.length > 0 || cutoutSettingsDirty;
 
   useEffect(() => {
     if (!sourceFile || !sourceValidation?.supportedByConverter) return;
@@ -94,6 +122,9 @@ export default function EditorPage() {
         const recipe = createEditorRecipe(nextSource.width, nextSource.height);
         setDecoded(nextSource);
         setAnalysis(undefined);
+        setPendingPixelOperations([]);
+        setRemoveTool(createEditorRemoveToolState());
+        setCutoutTool(createEditorCutoutToolState(Math.min(nextSource.width, nextSource.height)));
         dispatch({ type: 'replace-source', recipe });
         setDecodeState('ready');
         setActiveTool('adjust');
@@ -131,18 +162,34 @@ export default function EditorPage() {
 
   const undo = useCallback(() => {
     discardOutput();
+    const pendingIndex = findLastOperationForTool(pendingPixelOperations, activeTool);
+    if (pendingIndex >= 0) {
+      setPendingPixelOperations((current) => current.filter((_, index) => index !== pendingIndex));
+      return;
+    }
+    const previousRecipe = history.past.at(-1)?.recipe;
+    if (previousRecipe) {
+      setCutoutTool((current) => ({ ...current, settings: previousRecipe.cutout }));
+    }
     dispatch({ type: 'undo' });
-  }, [discardOutput]);
+  }, [activeTool, discardOutput, history.past, pendingPixelOperations]);
 
   const redo = useCallback(() => {
     discardOutput();
+    const nextRecipe = history.future[0]?.recipe;
+    if (nextRecipe) {
+      setCutoutTool((current) => ({ ...current, settings: nextRecipe.cutout }));
+    }
     dispatch({ type: 'redo' });
-  }, [discardOutput]);
+  }, [discardOutput, history.future]);
 
   const restoreOriginal = useCallback(() => {
     discardOutput();
+    setPendingPixelOperations([]);
+    setRemoveTool(createEditorRemoveToolState());
+    setCutoutTool(createEditorCutoutToolState(history.original.cutout.referenceDimension));
     dispatch({ type: 'restore-original' });
-  }, [discardOutput]);
+  }, [discardOutput, history.original.cutout.referenceDimension]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -186,9 +233,21 @@ export default function EditorPage() {
   const geometry = decoded
     ? resolveTransformGeometry(decoded.width, decoded.height, processingOptions)
     : undefined;
+  const outputWidth = geometry?.outputWidth ?? decoded?.width ?? 1;
+  const outputHeight = geometry?.outputHeight ?? decoded?.height ?? 1;
+  const pixelEditingSupported = outputWidth * outputHeight <= MAX_PIXEL_EDIT_PIXELS;
+  const previewRecipe = useMemo(
+    () => ({
+      ...history.present,
+      pixelOperations: [...history.present.pixelOperations, ...pendingPixelOperations],
+      cutout: cutoutTool.settings
+    }),
+    [cutoutTool.settings, history.present, pendingPixelOperations]
+  );
   const editCount = countRecipeEdits(history.present, history.original);
 
   const exportImage = async () => {
+    if (hasUnappliedPixelEdits) return;
     const result = await tool.process(processingOptions, 'edited');
     if (!result) return;
     triggerDownload(result.url, result.filename);
@@ -200,10 +259,66 @@ export default function EditorPage() {
   };
 
   const resetCurrentTool = () => {
-    applyRecipe(
-      resetToolRecipe(history.present, history.original, activeTool),
-      `Reset ${activeTool}`
+    const nextRecipe = resetToolRecipe(history.present, history.original, activeTool);
+    setPendingPixelOperations((current) =>
+      current.filter((operation) => !operationMatchesTool(operation, activeTool))
     );
+    if (activeTool === 'cutout') {
+      setCutoutTool((current) => ({ ...current, settings: nextRecipe.cutout }));
+    }
+    applyRecipe(nextRecipe, `Reset ${activeTool}`);
+  };
+
+  const addPixelOperation = (operation: EditorPixelOperation) => {
+    if (!pixelEditingSupported) return;
+    if (pendingPixelOperations.length >= 100) {
+      notify({
+        title: 'Stroke limit reached',
+        message: 'Apply or clear the current 100 local edits before adding more.',
+        tone: 'info'
+      });
+      return;
+    }
+    discardOutput();
+    setPendingPixelOperations((current) => [...current, operation]);
+  };
+
+  const updateRemoveTool = (state: EditorRemoveToolState) => {
+    discardOutput();
+    setRemoveTool(state);
+  };
+
+  const updateCutoutTool = (state: EditorCutoutToolState) => {
+    discardOutput();
+    setCutoutTool(state);
+  };
+
+  const clearPendingPixel = () => {
+    setPendingPixelOperations((current) =>
+      current.filter((operation) => !operationMatchesTool(operation, activeTool))
+    );
+    if (activeTool === 'cutout') {
+      setCutoutTool((current) => ({ ...current, settings: history.present.cutout }));
+    }
+    discardOutput();
+  };
+
+  const applyPendingPixel = () => {
+    if (!pixelEditingSupported) return;
+    const operations = activePendingPixelOperations;
+    if (operations.length === 0 && !activePixelSettingsDirty) return;
+    const recipe = {
+      ...history.present,
+      pixelOperations: [...history.present.pixelOperations, ...operations],
+      ...(activeTool === 'cutout' ? { cutout: cutoutTool.settings } : {})
+    };
+    applyRecipe(recipe, activeTool === 'cutout' ? 'Background cutout' : 'Remove & heal');
+    setPendingPixelOperations((current) =>
+      current.filter((operation) => !operationMatchesTool(operation, activeTool))
+    );
+    if (activeTool === 'cutout' && cutoutTool.settings.background === 'transparent') {
+      setExportSettings((current) => ({ ...current, format: 'png' }));
+    }
   };
 
   const chooseAnother = () =>
@@ -216,6 +331,7 @@ export default function EditorPage() {
       return undefined;
     });
     setAnalysis(undefined);
+    setPendingPixelOperations([]);
     setDecodeState('decoding');
     setDecodeError(undefined);
     void tool.chooseFile(file);
@@ -227,6 +343,7 @@ export default function EditorPage() {
       return undefined;
     });
     setAnalysis(undefined);
+    setPendingPixelOperations([]);
     setDecodeState('idle');
     setDecodeError(undefined);
     tool.removeFile();
@@ -295,7 +412,8 @@ export default function EditorPage() {
               <button
                 className="button button--secondary"
                 type="button"
-                disabled={history.past.length === 0}
+                aria-label="Undo"
+                disabled={history.past.length === 0 && activePendingPixelOperations.length === 0}
                 onClick={undo}
               >
                 <Undo2 size={16} /> <span>Undo</span>
@@ -303,6 +421,7 @@ export default function EditorPage() {
               <button
                 className="button button--secondary"
                 type="button"
+                aria-label="Redo"
                 disabled={history.future.length === 0}
                 onClick={redo}
               >
@@ -330,7 +449,10 @@ export default function EditorPage() {
               <button
                 className="button button--primary"
                 type="button"
-                disabled={tool.status === 'processing'}
+                disabled={tool.status === 'processing' || hasUnappliedPixelEdits}
+                title={
+                  hasUnappliedPixelEdits ? 'Apply or clear pending pixel edits first' : undefined
+                }
                 onClick={() => void exportImage()}
               >
                 {tool.status === 'processing' ? (
@@ -338,7 +460,11 @@ export default function EditorPage() {
                 ) : (
                   <Download size={17} />
                 )}
-                {tool.status === 'processing' ? 'Exporting' : 'Export image'}
+                {tool.status === 'processing'
+                  ? 'Exporting'
+                  : hasUnappliedPixelEdits
+                    ? 'Apply edits first'
+                    : 'Export image'}
               </button>
             </div>
           </header>
@@ -366,7 +492,7 @@ export default function EditorPage() {
 
             <EditorCanvas
               source={decoded}
-              recipe={history.present}
+              recipe={previewRecipe}
               activeTool={activeTool}
               compareMode={compareMode}
               comparison={comparison}
@@ -377,6 +503,14 @@ export default function EditorPage() {
               onCropChange={(crop) =>
                 applyRecipe({ ...history.present, crop }, 'Crop image', 'crop-drag')
               }
+              removeTool={removeTool}
+              cutoutTool={cutoutTool}
+              pendingPixelOperations={pendingPixelOperations}
+              pixelEditingSupported={pixelEditingSupported}
+              onPixelOperation={addPixelOperation}
+              onCloneSource={(cloneSource: EditorPoint | undefined) =>
+                updateRemoveTool({ ...removeTool, cloneSource })
+              }
             />
 
             <EditorInspector
@@ -385,8 +519,13 @@ export default function EditorPage() {
               history={history}
               analysis={analysis}
               output={exportSettings}
-              outputWidth={geometry?.outputWidth ?? decoded.width}
-              outputHeight={geometry?.outputHeight ?? decoded.height}
+              outputWidth={outputWidth}
+              outputHeight={outputHeight}
+              removeTool={removeTool}
+              cutoutTool={cutoutTool}
+              pendingPixelCount={activePendingPixelOperations.length}
+              pixelSettingsDirty={activePixelSettingsDirty}
+              pixelEditingSupported={pixelEditingSupported}
               onPanel={setInspectorPanel}
               onApply={applyRecipe}
               onOutput={changeExportSettings}
@@ -394,6 +533,11 @@ export default function EditorPage() {
               onRedo={redo}
               onResetTool={resetCurrentTool}
               onRestoreOriginal={restoreOriginal}
+              onRemoveTool={updateRemoveTool}
+              onCutoutTool={updateCutoutTool}
+              onUndoPendingPixel={undo}
+              onClearPendingPixel={clearPendingPixel}
+              onApplyPendingPixel={applyPendingPixel}
             />
           </div>
 
@@ -438,4 +582,32 @@ function triggerDownload(url: string, filename: string) {
   document.body.append(anchor);
   anchor.click();
   anchor.remove();
+}
+
+function operationMatchesTool(operation: EditorPixelOperation, tool: EditorTool) {
+  return tool === 'remove'
+    ? isRemoveOperation(operation)
+    : tool === 'cutout'
+      ? isCutoutOperation(operation)
+      : false;
+}
+
+function findLastOperationForTool(operations: readonly EditorPixelOperation[], tool: EditorTool) {
+  for (let index = operations.length - 1; index >= 0; index -= 1) {
+    const operation = operations[index];
+    if (operation && operationMatchesTool(operation, tool)) return index;
+  }
+  return -1;
+}
+
+function sameCutoutSettings(left: EditorRecipe['cutout'], right: EditorRecipe['cutout']) {
+  return (
+    left.smooth === right.smooth &&
+    left.feather === right.feather &&
+    left.expand === right.expand &&
+    left.referenceDimension === right.referenceDimension &&
+    left.background === right.background &&
+    left.color === right.color &&
+    left.blur === right.blur
+  );
 }
