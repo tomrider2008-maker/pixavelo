@@ -30,6 +30,8 @@ All notable Pixavelo releases are recorded here. Versions follow semantic versio
   installed in the production environment.
 - Operational evidence tools now support absolute Windows output paths.
 - Primary actions switch disabled/enabled color pairs atomically so WebKit never observes transient low contrast.
+- Sidebar Settings and Help stay pinned above the status bar on short laptop viewports while the primary tool list
+  remains keyboard-accessible through contained scrolling.
 
 ## [1.0.0] - 2026-08-25
 
