@@ -60,4 +60,7 @@ The preview job uses a dedicated GitHub `preview` environment containing a least
 
 ## Activation boundary
 
-The product owner authorized proceeding toward production in the active Codex task on 2026-08-26. That authorization satisfies the human approval step but does not waive the Phase 12 evidence requirements. Production must remain at its certified Phase 12 revision until the complete release gate passes on the exact release commit, the physical-device matrix has real evidence, and the continuous 30-day SLO record is claimable without a privacy or release-integrity miss.
+The product owner authorized proceeding toward production in the active Codex task on 2026-08-26. At that time, the
+Phase 12 policy still required physical-device evidence and a claimable 30-day SLO record before activation. That
+historical boundary is preserved here. The dated 2026-08-27 Phase 13 solo-maintainer revision now treats those two
+items as non-blocking advisories while keeping the complete automated release gate mandatory.

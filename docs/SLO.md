@@ -46,6 +46,17 @@ missed. Resume only after the incident is contained, production is verified and 
 - Review the supported physical-device matrix at least quarterly and before a major release.
 - Do not claim the 30-day SLO until monitoring has been active for the complete observation window.
 
+## Release policy
+
+As of 2026-08-27, the rolling 30-day window is an operational trend and reporting objective, not a pre-deployment
+gate for this solo-maintained static application. The reporter continues to validate evidence hashes, coverage gaps,
+availability, privacy, release integrity, latency and observed revisions. An incomplete window produces a loud warning
+and a non-blocking advisory in release evidence; it must never be described as claimable.
+
+This change does not weaken current automated checks. A privacy or release-integrity failure in the active release or
+live workflow remains a hard failure and an incident. Hourly probes, daily browser checks, escalation and 90-day
+retention continue unchanged.
+
 ## Observation ledger and reporting
 
 Every endpoint run and browser project emits an immutable JSON observation containing the production target, observed
@@ -66,5 +77,5 @@ every observation hash, and lists all observed deployment revisions.
 Current status on 2026-08-27: actual schedule events exist from 2026-08-25 onward. Several scheduled runs failed on
 2026-08-26, and the subsequently observed endpoint sequence exceeded the 90-minute maximum gap. The scheduled
 artifacts are valid point-in-time evidence, but the continuity requirements are not met and the 30-day window is
-explicitly unclaimable. A new window can begin only after the latest failure or excessive gap, and any later privacy,
-release-integrity or continuity miss restarts the claim.
+explicitly unclaimable. The reporter records that state as a non-blocking warning. A new window can begin only after
+the latest failure or excessive gap, and any later privacy, release-integrity or continuity miss restarts the claim.

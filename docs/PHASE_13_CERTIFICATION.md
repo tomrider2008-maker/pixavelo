@@ -1,82 +1,122 @@
 # Phase 13 Production Certification and Operational Activation
 
-## Go/no-go decision
+## Go/no-go decision — policy revision 2026-08-27
 
-**NO-GO for production deployment or feature expansion.** GitHub repository and production protections are now
-enforced, but the Phase 12 expansion gate still requires an independent reviewer, current physical-device evidence
-and a continuous 30-day observation record. Canonical production currently reports release `1.0.0`, revision
-`cd143531f1d0e1c17e47c9665e1b9c2419488279`; this protection activation did not deploy it.
+**RELEASE-ELIGIBLE WHEN THE HARD AUTOMATED GATES PASS.** The product owner deliberately revised three Phase 13
+requirements that structurally blocked a solo-maintained, static, local-only application:
 
-This decision does not claim physical-device certification, an independently approved Cloudflare deployment,
-production rollback, Phase 13 deployment or a 30-day SLO record.
+1. Independent second-reviewer approval is no longer required to merge or deploy. Pull requests and all required
+   status checks remain mandatory.
+2. Physical-device testing is opportunistic QA. It is recorded and validated when performed but is not a release
+   blocker.
+3. The rolling 30-day SLO window remains monitored and reported. An incomplete historical window is a visible
+   advisory, not a pre-deployment gate.
 
-## Certification evidence
+Pixavelo has no accounts, backend, user database, payments, remote image processor or user-media telemetry. The hard
+automated release gate already exercises desktop Chromium, Firefox and WebKit; mobile Chromium and WebKit; WCAG
+automation; CSP/static hardening; local/no-upload behavior; dependency vulnerabilities; clean provenance; SBOM and
+file-digest evidence. For this risk profile, those repeatable checks are the mandatory deployment controls. The three
+external practices above remain valuable evidence without making solo operation impossible.
 
-| Control                                  | Status                    | Evidence / result                                                                                               |
-| ---------------------------------------- | ------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Baseline production release              | Observed and unchanged    | Live provenance reports full revision `cd143531…`; this activation made no production deployment.               |
-| GitHub remote and Actions                | Activated                 | Public repository `tomrider2008-maker/pixavelo`; restricted Actions policy and read-only default token.         |
-| Main enterprise CI                       | Passed                    | Run `33036366350`: quality plus five browser/device-profile jobs passed on revision `b3910e2…`.                 |
-| Manual production operations             | Passed                    | Run `32879256015`: endpoint plus Chromium, Firefox, WebKit and both mobile profiles passed.                     |
-| Operations escalation                    | Passed                    | Failed run `32878411383` opened issue `#2`; the recovery run was linked and closed it.                          |
-| Scheduled hourly/daily execution         | Active; continuity failed | Schedule events exist, but 2026-08-26 failures and a later gap over 90 minutes invalidate continuity.           |
-| Safe PWA update lifecycle                | Locally automated         | Accessible prompt, waiting worker, work-aware adoption and controller-change activity guard.                    |
-| Old-client-to-new-release behavior       | Passed in Chromium        | A waiting worker held while local work was queued and adopted only after the queue became idle.                 |
-| Dependabot and vulnerability controls    | Activated                 | Security updates, secret scanning and push protection are enabled; weekly npm/action updates remain configured. |
-| Protected `main` and production approval | Enforced; reviewer needed | Public-repo protections and self-review prevention are active; only one collaborator currently has access.      |
-| Cloudflare credentials                   | Activated                 | Account ID and account-owned Pages Write token installed; read-only project verification passed.                |
-| Rollback path                            | Contract rehearsal passed | Six acceptance/rejection cases; zero network requests and zero production mutations.                            |
-| Physical-device matrix                   | Pending real evidence     | Validator and evidence template exist; 0/4 platform families are certified.                                     |
-| Rolling SLO record                       | Incomplete                | Real schedule evidence exists, but failures/gaps mean there is no claimable continuous 30-day window.           |
+This policy does not claim that missing evidence passed. Physical coverage remains 0/4 until real records validate,
+and the 30-day window remains unclaimable until the reporter proves otherwise.
 
-The local durable baseline is under `docs/evidence/phase13/`. GitHub run `32879256015` retains the manual operations
-artifacts for 90 days. These observations verify a point in time only and are not backfilled into a fictitious monthly
-record.
+### Hard release requirements retained
+
+- Protected pull-request flow and strict required status checks.
+- Prettier, ESLint with zero warnings and strict TypeScript.
+- Unit/component coverage and production build budgets.
+- Full Playwright matrix: Chromium, Firefox, WebKit, mobile Chromium and mobile WebKit.
+- WCAG A/AA automation and responsive overflow checks.
+- Local-processing/no-upload assertions and safe PWA update behavior.
+- CSP, static hardening and operational audits.
+- Production dependency vulnerability audit.
+- Secret scanning, push protection and Dependabot security updates.
+- Clean-tree release provenance, pinned actions, CycloneDX SBOM and file digests.
+- Linear history, conversation resolution, no force-push/deletion and administrator enforcement.
+- Explicit `DEPLOY` confirmation, protected production branch and post-deployment verification.
+- Immediate failure/escalation for a current privacy, release-integrity or deployment verification defect.
+
+No automated quality or security check is disabled, weakened or bypassed by this revision.
+
+## Historical go/no-go decision — superseded 2026-08-27
+
+The following decision is preserved as the dated Phase 13 record that applied before the solo-maintainer revision:
+
+> **NO-GO for production deployment or feature expansion.** GitHub repository and production protections were active,
+> but the Phase 12 expansion gate still required an independent reviewer, current physical-device evidence and a
+> continuous 30-day observation record. Production was to remain unchanged until all three external conditions passed.
+
+The prior external activation gates were:
+
+1. Add a second trusted GitHub collaborator for independent pull-request and production approval.
+2. Complete Windows, macOS, iOS Safari and Android Chrome evidence with current physical hardware or a managed
+   real-device service.
+3. Accumulate uninterrupted hourly availability and daily privacy evidence for the full 30-day window, with
+   `claimable30DayWindow: true` and no privacy or release-integrity miss.
+4. Re-run the clean release gate and obtain protected independent production approval.
+
+Those requirements were originally selected for an enterprise/team release model. They are not being deleted or
+represented as completed; their blocking effect is superseded because a one-person project cannot supply an
+independent reviewer and cannot create elapsed time or unavailable hardware on demand.
+
+## Current certification evidence
+
+| Control                                  | Current status            | Release treatment                                                                                             |
+| ---------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| GitHub remote and Actions                | Active                    | Public repository, pinned selected actions and read-only default workflow token                               |
+| Main enterprise CI                       | Passed on `b3910e2…`      | Hard requirement: quality plus all five browser profiles                                                      |
+| Safe PWA update lifecycle                | Automated                 | Hard requirement: prompt, active-work deferral and old-client adoption tests                                  |
+| Dependabot and vulnerability controls    | Active                    | Hard requirement: production audit, secret scanning and push protection                                       |
+| Protected `main`                         | API rule update pending   | Keep PRs and six strict checks; owner must remove only the approval count                                     |
+| Protected production environment         | API rule update pending   | Keep protected-branch deployment; owner must remove only the reviewer/self-review rule                        |
+| Cloudflare credentials                   | Installed                 | Least-privilege environment secrets; values are never committed or printed                                    |
+| Rollback path                            | Contract rehearsal passed | Guarded immutable rollback remains available for a real incident                                              |
+| Physical-device matrix                   | Incomplete                | Non-blocking warning; record real evidence when available and never relabel emulation                         |
+| Rolling 30-day SLO record                | Incomplete                | Non-blocking warning; hourly/daily monitoring, incident escalation and 90-day retention continue              |
+| Current privacy/release-integrity checks | Must pass                 | Hard failure in the release/live workflow; the advisory policy applies only to historical-window completeness |
+
+Canonical production reported release `1.0.0`, revision `cd143531f1d0e1c17e47c9665e1b9c2419488279` when this
+revision was prepared. That observation is not a claim that the later premium commits are deployed.
 
 ## External activation gates
 
-1. Add a second trusted GitHub collaborator who can independently review pull requests and production deployments.
-   Required reviews and self-review prevention must remain enabled.
-2. Complete Windows, macOS, iOS Safari and Android Chrome evidence packages with current physical hardware or a
-   managed real-device service.
-3. Establish a new uninterrupted hourly availability and daily privacy sequence after the latest failure or excessive
-   gap, then accumulate the full 30-day window. The reporter must
-   return `claimable30DayWindow: true` with no privacy or release-integrity miss.
-4. Re-run the clean release gate. Only then may the independent reviewer approve a protected production deployment.
+The former blocking gates are now non-blocking operational practices:
 
-## Accepted risks while blocked
+- Run the physical-device matrix when suitable Windows, macOS, iOS and Android hardware is available.
+- Retain screenshots, tester/device/browser metadata and SHA-256 evidence for any claimed physical pass.
+- Continue hourly endpoint and daily five-browser production monitoring.
+- Review the rolling SLO report and investigate every failure or excessive gap.
+- Seek peer review for high-risk changes when a trusted reviewer is available.
 
-- Production remains on the currently observed `cd143531…` release; the later editor, convert and optimize commits
-  remain undeployed while the evidence gate is closed.
-- Public source exposure was explicitly approved by the product owner on 2026-08-27. Secret scanning and push
-  protection are enabled, but public disclosure remains an accepted product decision.
-- With only one collaborator and self-review prevention enabled, protected merges and production deployments remain
-  intentionally locked until a second trusted reviewer is added.
-- Playwright device profiles are not physical evidence for hardware downloads, thermal pressure, PWA installation or
-  mobile operating-system lifecycle behavior.
-- Existing observations prove successful points in time, not monthly availability.
+Branch and environment protections are GitHub API state. Repository work must not silently mutate them. The owner-run
+commands that remove only the obsolete approval requirements while preserving automated protection are documented in
+`docs/GITHUB_OPERATIONS_ACTIVATION.md`.
 
-Any privacy or release-integrity miss changes the disposition to incident containment, not conditional approval.
-
-## Exact commands
+## Exact validation commands
 
 ```bash
 npm ci
-npm run check
+npm run format:check
+npm run lint
+npm run typecheck
+npm run test
+npm run build
 npm run audit:hardening
 npm run audit:operations
 npm run audit:production
-npm run rollback:rehearse
-npm run escalate:operations:dry-run -- --availability failure --browser skipped
-npm run verify:deployment -- --expected-revision cd143531f1d0e1c17e47c9665e1b9c2419488279
-npm run observe:slo -- --kind endpoint --report .artifacts/operations/deployment-verification.json --status success
-npm run report:slo -- --input docs/evidence/phase13 --input .artifacts/operations
-npm run certify:device -- report --input <physical-evidence-directory> --output .artifacts/operations/device-certification.json
 npm run test:e2e
+npm run release:artifacts
+npm run verify:deployment
 npm run test:live
-gh run view 32879256015 --repo tomrider2008-maker/pixavelo
-gh secret list --repo tomrider2008-maker/pixavelo --env production
 ```
 
-`npm run deploy:pages` and workflow release dispatch are intentionally absent until every external gate above is
-satisfied.
+Advisory evidence commands:
+
+```bash
+npm run report:slo -- --input docs/evidence/phase13 --input .artifacts/operations
+npm run certify:device -- report --input <physical-evidence-directory> --output .artifacts/operations/device-certification.json
+```
+
+The advisory commands report incomplete coverage loudly and preserve it in JSON/release evidence without a failing
+exit code. Invalid evidence hashes, malformed completed device claims and current automated test failures still fail.

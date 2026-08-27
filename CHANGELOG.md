@@ -12,6 +12,9 @@ All notable Pixavelo releases are recorded here. Versions follow semantic versio
 
 ### Changed
 
+- 2026-08-27: Reclassified independent review, physical-device coverage and the 30-day SLO window as visible
+  solo-maintainer advisories; every automated quality, browser, accessibility, security and release-evidence gate
+  remains mandatory.
 - Waiting service workers no longer force activation while local work is queued or processing.
 - Live rollback now verifies the immutable deployment's release provenance before production mutation.
 - GitHub operations are active with restricted Actions permissions, Dependabot, 90-day evidence and failure

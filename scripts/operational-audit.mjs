@@ -95,6 +95,23 @@ if (!headers.includes('/release.json') || !headers.includes('no-store')) {
   failures.push('public/_headers: release provenance is not protected from stale caching');
 }
 
+const releaseEvidence = await read('scripts/create-release-evidence.mjs');
+for (const control of ['policyAdvisories', 'physicalDeviceQa', 'slo30DayWindow']) {
+  if (!releaseEvidence.includes(control)) {
+    failures.push(`create-release-evidence.mjs: missing advisory evidence control ${control}`);
+  }
+}
+const sloReporter = await read('scripts/report-slo.mjs');
+if (!sloReporter.includes('blocking: false')) {
+  failures.push('report-slo.mjs: incomplete historical windows are not explicitly advisory');
+}
+const deviceReporter = await read('scripts/device-certification.mjs');
+for (const control of ['uncertifiedPlatforms', 'blocking: false', 'WARNING:']) {
+  if (!deviceReporter.includes(control)) {
+    failures.push(`device-certification.mjs: missing non-blocking evidence control ${control}`);
+  }
+}
+
 for (const [file, headings] of [
   ['docs/SLO.md', ['Availability SLO', 'Privacy SLO', 'Error budget']],
   [

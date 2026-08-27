@@ -1,8 +1,13 @@
 # Physical Device QA Matrix
 
-Playwright profiles are compatibility signals, not physical-device evidence. A release is not signed off for a device
-until the table is completed using current hardware or a managed real-device service, with the evidence link and
-tester recorded.
+Physical-device testing is opportunistic QA under the solo-maintainer policy adopted on 2026-08-27. It is recorded
+when suitable hardware is available and is not a production release gate. Playwright profiles remain compatibility
+signals, not physical-device evidence, and an individual platform is not described as physically certified until the
+table is completed using current hardware or a managed real-device service with the evidence link and tester recorded.
+
+An empty, missing or partial evidence directory produces a loud non-blocking warning and lists every uncertified
+platform. It never produces a false pass. Completed records still require the full device metadata, checks, evidence
+files and matching SHA-256 digests described below.
 
 ## Release sign-off
 
@@ -70,4 +75,5 @@ npm run certify:device -- report --input tmp --output .artifacts/operations/devi
 ```
 
 A valid `pending` template is still pending, and the summary is complete only when all four platform families have a
-validated passed record. Emulator, Playwright and desktop responsive evidence must never be relabeled as physical.
+validated passed record. An incomplete summary is retained as a release advisory rather than failing the release.
+Emulator, Playwright and desktop responsive evidence must never be relabeled as physical.

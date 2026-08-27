@@ -45,6 +45,18 @@ files.sort((left, right) => left.path.localeCompare(right.path));
 const deploymentDigest = createHash('sha256')
   .update(files.map((file) => `${file.path}\0${file.bytes}\0${file.sha256}\n`).join(''))
   .digest('hex');
+const [deviceReport, sloReport] = await Promise.all([
+  optionalJson(
+    process.env.PIXAVELO_DEVICE_CERTIFICATION_REPORT ??
+      new URL('../.artifacts/operations/device-certification.json', import.meta.url)
+  ),
+  optionalJson(
+    process.env.PIXAVELO_SLO_REPORT ??
+      new URL('../.artifacts/operations/slo-report.json', import.meta.url)
+  )
+]);
+const policyAdvisories = releasePolicyAdvisories(deviceReport, sloReport);
+for (const warning of policyAdvisories.warnings) console.warn(`WARNING: ${warning}`);
 const evidence = {
   schemaVersion: 1,
   application: release.application,
@@ -66,6 +78,7 @@ const evidence = {
     'production-dependency-audit',
     'five-project-browser-matrix'
   ],
+  policyAdvisories,
   files
 };
 
@@ -75,6 +88,85 @@ await writeFile(new URL('release-evidence.json', output), `${JSON.stringify(evid
 console.log(
   `Release evidence created for ${release.version} (${files.length} files, digest ${deploymentDigest.slice(0, 12)}).`
 );
+
+function releasePolicyAdvisories(deviceResult, sloResult) {
+  const requiredPlatforms = ['windows', 'macos', 'ios-safari', 'android-chrome'];
+  const device = deviceResult.value;
+  const slo = sloResult.value;
+  const uncertifiedPlatforms = Array.isArray(device?.uncertifiedPlatforms)
+    ? device.uncertifiedPlatforms
+    : requiredPlatforms.filter((platform) => !device?.platformCoverage?.[platform]?.complete);
+  const deviceStatus = deviceResult.error
+    ? 'invalid'
+    : device?.complete === true
+      ? 'complete'
+      : device
+        ? 'incomplete'
+        : 'not_provided';
+  const sloStatus = sloResult.error
+    ? 'invalid'
+    : slo?.window?.claimable30DayWindow === true
+      ? slo?.objectivesMet === true
+        ? 'complete'
+        : 'objectives_not_met'
+      : slo
+        ? 'incomplete'
+        : 'not_provided';
+  const warnings = [];
+  if (deviceStatus !== 'complete') {
+    warnings.push(
+      `Physical-device QA is ${deviceStatus}; uncertified platforms: ${uncertifiedPlatforms.join(', ') || 'not reported'}. This advisory is retained without blocking release.`
+    );
+  }
+  if (sloStatus !== 'complete') {
+    warnings.push(
+      `The 30-day SLO record is ${sloStatus}. Monitoring and evidence integrity remain active, but historical-window completeness is advisory for release.`
+    );
+  }
+  return {
+    schemaVersion: 1,
+    blocking: false,
+    policy: 'solo-maintainer-2026-08-27',
+    independentReview: {
+      blocking: false,
+      required: false,
+      status: 'owner-authorized-solo-maintainer-policy'
+    },
+    physicalDeviceQa: {
+      blocking: false,
+      status: deviceStatus,
+      certifiedPlatforms: Array.isArray(device?.certifiedPlatforms)
+        ? device.certifiedPlatforms
+        : [],
+      uncertifiedPlatforms,
+      source: deviceResult.source,
+      ...(deviceResult.error ? { error: deviceResult.error } : {})
+    },
+    slo30DayWindow: {
+      blocking: false,
+      status: sloStatus,
+      claimable: slo?.window?.claimable30DayWindow === true,
+      objectivesMet: slo?.objectivesMet === true,
+      source: sloResult.source,
+      ...(sloResult.error ? { error: sloResult.error } : {})
+    },
+    warnings
+  };
+}
+
+async function optionalJson(path) {
+  const source = path instanceof URL ? path.pathname : String(path);
+  try {
+    return { source, value: JSON.parse(await readFile(path, 'utf8')), error: null };
+  } catch (error) {
+    if (error?.code === 'ENOENT') return { source, value: null, error: null };
+    return {
+      source,
+      value: null,
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+}
 
 async function walk(directory) {
   const outputFiles = [];
