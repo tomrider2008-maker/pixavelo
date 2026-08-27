@@ -127,8 +127,10 @@
   z-index: 90;
   display: flex;
   height: calc(100vh - var(--header-height) - var(--status-height));
+  height: calc(100dvh - var(--header-height) - var(--status-height));
   min-height: 0;
   flex-direction: column;
+  overflow: hidden;
   padding: 24px 18px 20px;
   background: var(--color-canvas-subtle);
   border-right: 1px solid var(--color-border);
@@ -140,7 +142,15 @@
   gap: 4px;
 }
 
+.sidebar__primary {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
 .sidebar__utility {
+  flex: 0 0 auto;
   padding-top: 17px;
   margin-top: auto;
   border-top: 1px solid var(--color-border);

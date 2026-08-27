@@ -121,6 +121,7 @@
     z-index: 400;
     width: min(330px, calc(100vw - 44px));
     height: 100vh;
+    height: 100dvh;
     padding: 12px 18px calc(20px + env(safe-area-inset-bottom));
     box-shadow: var(--shadow-dialog);
     transform: translateX(-105%);
