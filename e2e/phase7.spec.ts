@@ -101,6 +101,31 @@ test('Phase 7 mobile editor keeps canvas, tools, inspector and export reachable'
   await expect(page.locator('body')).not.toHaveCSS('overflow-x', 'scroll');
 });
 
+test('Editor adjustment labels stay clear of their sliders on compact desktop panels', async ({
+  page
+}, testInfo) => {
+  test.skip(testInfo.project.name.startsWith('mobile'), 'Desktop inspector geometry assertion.');
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.goto('/edit');
+  await page.locator('[data-image-input]').setInputFiles({
+    name: 'label-clearance.png',
+    mimeType: 'image/png',
+    buffer: await makePng(page)
+  });
+
+  const temperature = page.locator('.editor-range-control').filter({ hasText: 'Temperature' });
+  const label = temperature.locator('> span');
+  const slider = temperature.getByRole('slider');
+  const [labelBox, sliderBox] = await Promise.all([label.boundingBox(), slider.boundingBox()]);
+
+  expect(labelBox).not.toBeNull();
+  expect(sliderBox).not.toBeNull();
+  expect(labelBox!.x + labelBox!.width).toBeLessThanOrEqual(sliderBox!.x + 1);
+
+  await slider.press('ArrowRight');
+  await expect(temperature.locator('output')).toHaveText('1');
+});
+
 test('Premium editor analysis, looks and production presets remain local and reversible', async ({
   page
 }) => {

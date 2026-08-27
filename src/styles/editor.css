@@ -729,9 +729,12 @@
 }
 .editor-range-control {
   display: grid;
-  grid-template-columns: 67px minmax(0, 1fr) 40px;
+  grid-template-columns: minmax(80px, max-content) minmax(0, 1fr) 40px;
   align-items: center;
   gap: 6px;
+}
+.editor-range-control > span {
+  white-space: nowrap;
 }
 .editor-range-control input,
 .editor-quality-control input {
