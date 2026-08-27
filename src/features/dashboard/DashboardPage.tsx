@@ -14,9 +14,9 @@ import {
   Sparkles
 } from 'lucide-react';
 import { useCallback, useRef, useState, type DragEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { en } from '../../i18n/en';
-import { createIntakeSession } from '../../services/intakeSession';
+import { useImageIntake } from '../intake/IntakeContext';
 
 const quickActions = [
   {
@@ -73,16 +73,15 @@ const workflows = [
 export default function DashboardPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
-  const navigate = useNavigate();
+  const { openImageIntake } = useImageIntake();
 
   const openFiles = useCallback(
     (files: FileList | readonly File[]) => {
       const selected = Array.from(files);
       if (selected.length === 0) return;
-      const sessionId = createIntakeSession(selected);
-      void navigate('/convert', { state: { sessionId } });
+      openImageIntake(selected);
     },
-    [navigate]
+    [openImageIntake]
   );
 
   const onDrop = (event: DragEvent<HTMLDivElement>) => {

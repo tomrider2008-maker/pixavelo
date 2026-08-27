@@ -14,6 +14,9 @@ certification controls.
 ## What is implemented
 
 - Responsive desktop, tablet and mobile application shell.
+- Accessible first-run welcome guide with local-only dismissal, Settings re-entry and direct studio navigation.
+- Bounded Smart Intake that validates files locally, explains measurable workflow recommendations and preserves the
+  user's final studio choice.
 - Accessible navigation drawer, command palette, error boundaries, toasts, focus handling and reduced motion.
 - Light, dark and system themes with versioned local preferences.
 - PWA manifest, offline application cache and accessible work-aware release adoption for long-lived sessions.

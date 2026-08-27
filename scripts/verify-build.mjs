@@ -62,8 +62,8 @@ if (codecJavascriptBytes > 220 * 1024)
   failures.push(`Lazy codec JavaScript budget exceeded: ${codecJavascriptBytes} bytes`);
 if (javascriptBytes > 1100 * 1024)
   failures.push(`Total lazy-inclusive JavaScript ceiling exceeded: ${javascriptBytes} bytes`);
-if (cssBytes > 180 * 1024) failures.push(`CSS budget exceeded: ${cssBytes} bytes`);
-if (cssGzipBytes > 32 * 1024)
+if (cssBytes > 160 * 1024) failures.push(`CSS budget exceeded: ${cssBytes} bytes`);
+if (cssGzipBytes > 28 * 1024)
   failures.push(`Compressed CSS budget exceeded: ${cssGzipBytes} bytes`);
 
 const heifWasm = files.find((path) => /^assets[\\/]heic_dec-.*\.wasm$/.test(path));

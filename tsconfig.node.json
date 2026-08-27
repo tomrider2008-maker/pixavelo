@@ -13,6 +13,7 @@
     "skipLibCheck": true
   },
   "include": [
+    "build/**/*.ts",
     "vite.config.ts",
     "eslint.config.js",
     "playwright.config.ts",

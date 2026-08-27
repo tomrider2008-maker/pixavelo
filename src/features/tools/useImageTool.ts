@@ -164,9 +164,10 @@ export function useImageTool() {
   const cancel = useCallback(() => controllerRef.current?.abort(), []);
 
   useEffect(() => {
+    const active = ['validating', 'processing', 'live-processing'].includes(status);
     setProcessingActivity({
       queued: status === 'ready' ? 1 : 0,
-      active: status === 'processing' ? 1 : 0,
+      active: active ? 1 : 0,
       ...(stage ? { stage } : {})
     });
     return clearProcessingActivity;

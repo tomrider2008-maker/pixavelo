@@ -7,7 +7,7 @@ interface WelcomeRecord {
 function readRecord(): WelcomeRecord | null {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) return null;
-  
+
   try {
     const parsed: unknown = JSON.parse(raw);
     if (parsed && typeof parsed === 'object' && 'dismissed' in parsed) {
@@ -46,8 +46,7 @@ export function markWelcomeSeen(): void {
 }
 
 /**
- * Remove the dismissal record. Used by the "Reopen welcome guide" action in
- * Settings. The caller is responsible for triggering the dialog to reopen.
+ * Remove the dismissal record for explicit reset and test flows.
  */
 export function resetWelcome(): void {
   try {

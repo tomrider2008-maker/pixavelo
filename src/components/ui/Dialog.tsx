@@ -7,6 +7,8 @@ interface DialogProps {
   readonly onClose: () => void;
   readonly children: ReactNode;
   readonly className?: string;
+  readonly backdropClassName?: string;
+  readonly returnFocus?: HTMLElement | null | undefined;
 }
 
 const FOCUSABLE =
@@ -18,7 +20,9 @@ export function Dialog({
   description,
   onClose,
   children,
-  className = ''
+  className = '',
+  backdropClassName = '',
+  returnFocus
 }: DialogProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
@@ -28,7 +32,7 @@ export function Dialog({
 
     const panel = panelRef.current;
     const activeElement = document.activeElement as HTMLElement | null;
-    if (!panel?.contains(activeElement)) previousFocusRef.current = activeElement;
+    if (!panel?.contains(activeElement)) previousFocusRef.current = returnFocus ?? activeElement;
     const firstFocusable = panel?.querySelector<HTMLElement>(FOCUSABLE);
     firstFocusable?.focus();
 
@@ -62,15 +66,22 @@ export function Dialog({
       document.body.classList.remove('dialog-open');
       const restoreTarget = previousFocusRef.current;
       window.requestAnimationFrame(() => {
+        // A dialog can intentionally hand off to another dialog (for example,
+        // Welcome -> Smart Intake). Do not pull focus out of the new modal.
+        if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
         if (restoreTarget?.isConnected) restoreTarget.focus({ preventScroll: true });
       });
     };
-  }, [onClose, open]);
+  }, [onClose, open, returnFocus]);
 
   if (!open) return null;
 
   return (
-    <div className="dialog-backdrop" role="presentation" onMouseDown={onClose}>
+    <div
+      className={`dialog-backdrop ${backdropClassName}`.trim()}
+      role="presentation"
+      onMouseDown={onClose}
+    >
       <div
         ref={panelRef}
         className={`dialog ${className}`}

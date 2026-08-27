@@ -392,14 +392,12 @@
   margin-top: 5px;
 }
 
-.principle-list,
 .help-topic-list {
   display: grid;
   margin-top: 38px;
   border-top: 1px solid var(--color-border);
 }
 
-.principle-list section,
 .help-topic-list section,
 .help-topic-list a {
   display: grid;
@@ -410,16 +408,10 @@
   border-bottom: 1px solid var(--color-border);
 }
 
-.principle-list svg,
 .help-topic-list svg {
   color: var(--color-accent);
 }
 
-.principle-list h2 {
-  font-size: 16px;
-}
-
-.principle-list p,
 .help-topic-list small {
   display: block;
   margin-top: 3px;
@@ -990,23 +982,6 @@ button:disabled {
   cursor: ew-resize;
 }
 
-.resize-canvas-meta {
-  display: flex;
-  min-height: 42px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 0 3px;
-  color: var(--color-text-muted);
-  font-size: 10.5px;
-}
-
-.resize-canvas-meta strong {
-  color: var(--color-text);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-}
-
 .transform-inspector {
   display: grid;
   gap: 10px;
@@ -1066,12 +1041,6 @@ button:disabled {
   width: 16px;
   height: 16px;
   accent-color: var(--color-accent);
-}
-
-.crop-field-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 9px;
 }
 
 .rotation-options {

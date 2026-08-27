@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
+import { hasLocalWorkGuard, useLocalWorkGuard } from '../../stores/localWorkGuard';
 import { hasProcessingActivity, useProcessingActivity } from '../../stores/processingActivity';
 
 interface ServiceWorkerUpdateProps {
@@ -11,7 +12,8 @@ export function ServiceWorkerUpdate({
   reloadPage = () => window.location.reload()
 }: ServiceWorkerUpdateProps) {
   const activity = useProcessingActivity();
-  const hasLocalWork = activity.active > 0 || activity.queued > 0;
+  const guardedLocalWork = useLocalWorkGuard();
+  const hasLocalWork = activity.active > 0 || activity.queued > 0 || guardedLocalWork;
   const reloadPageRef = useRef(reloadPage);
   const activationStartedRef = useRef(false);
   const reloadStartedRef = useRef(false);
@@ -30,7 +32,7 @@ export function ServiceWorkerUpdate({
 
   const requestSafeReload = useCallback(() => {
     if (!updateExpectedRef.current) return;
-    if (hasProcessingActivity()) {
+    if (hasProtectedLocalWork()) {
       setActivatedWhileBusy(true);
       return;
     }
@@ -63,7 +65,7 @@ export function ServiceWorkerUpdate({
 
   const activateUpdate = useCallback(() => {
     if (activationStartedRef.current) return;
-    if (hasProcessingActivity()) {
+    if (hasProtectedLocalWork()) {
       setAdoptionRequested(true);
       return;
     }
@@ -105,7 +107,7 @@ export function ServiceWorkerUpdate({
   useEffect(() => {
     if (hasLocalWork || !adoptionRequested) return;
     const timer = window.setTimeout(() => {
-      if (hasProcessingActivity()) return;
+      if (hasProtectedLocalWork()) return;
       if (activatedWhileBusy) requestSafeReload();
       else activateUpdate();
     }, 0);
@@ -152,4 +154,8 @@ export function ServiceWorkerUpdate({
       </button>
     </section>
   );
+}
+
+function hasProtectedLocalWork() {
+  return hasProcessingActivity() || hasLocalWorkGuard();
 }

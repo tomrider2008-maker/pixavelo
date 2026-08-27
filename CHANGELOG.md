@@ -6,12 +6,20 @@ All notable Pixavelo releases are recorded here. Versions follow semantic versio
 
 ### Added
 
+- Premium first-run welcome guide with direct studio navigation, accessible focus management and explicit local-only
+  privacy guarantees.
+- Smart Intake analysis that validates files locally, explains its recommendation and hands approved images to the
+  selected Edit, Convert, Optimize, Resize, Batch or Web Assets workflow.
+- Cross-browser coverage for first-run persistence, dialog safety, dashboard intake, real image decoding, responsive
+  containment and source-dimension handoff.
 - Phase 13 work-aware PWA update prompt and old-client-to-new-release browser coverage.
 - Digest-protected SLO observations/reporting, executable device evidence validation and a no-network rollback rehearsal.
 - GitHub-ready 90-day operational evidence, scheduled failure escalation and activation/certification runbooks.
 
 ### Changed
 
+- Dashboard file selection now opens the transparent Smart Intake router instead of sending every selection directly
+  to Convert.
 - 2026-08-27: Reclassified independent review, physical-device coverage and the 30-day SLO window as visible
   solo-maintainer advisories; every automated quality, browser, accessibility, security and release-evidence gate
   remains mandatory.

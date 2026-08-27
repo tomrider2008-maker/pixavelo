@@ -13,13 +13,12 @@ import {
   X
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
-import { useLocation } from 'react-router-dom';
 import { useNotifications } from '../../components/feedback/Notifications';
 import { createZipBlob } from '../../engine/export/createZip';
 import { toAppError } from '../../engine/errors/AppError';
-import { clearIntakeSession, getIntakeSession } from '../../services/intakeSession';
 import type { CoreImageFormat } from '../../types/images';
 import { formatBytes } from '../../utils/format';
+import { useIntakeSessionConsumer } from '../tools/useIntakeSessionConsumer';
 import { filesFromClipboardData, readClipboardImageFiles } from './clipboard';
 import { AdvancedFormatCapabilities } from './AdvancedFormatCapabilities';
 import { ConversionQueue } from './ConversionQueue';
@@ -28,15 +27,11 @@ import { buildConversionFilename, deduplicateFilenames } from './naming';
 import type { ConversionJob, ConversionQueueFilter, ConversionSortOrder } from './types';
 import { useConversionQueue } from './useConversionQueue';
 
-interface IntakeLocationState {
-  readonly sessionId?: string;
-}
+const EMPTY_INTAKE_FILES: readonly File[] = [];
 
 export default function ConverterPage() {
-  const location = useLocation();
-  const state = location.state as IntakeLocationState | null;
-  const initialFiles = useMemo(() => getIntakeSession(state?.sessionId), [state?.sessionId]);
-  const queue = useConversionQueue(initialFiles, readRequestedFormat());
+  const queue = useConversionQueue(EMPTY_INTAKE_FILES, readRequestedFormat());
+  useIntakeSessionConsumer(queue.addFiles);
   const [filter, setFilter] = useState<ConversionQueueFilter>('all');
   const [sortOrder, setSortOrder] = useState<ConversionSortOrder>('insertion');
   const [query, setQuery] = useState('');
@@ -50,10 +45,6 @@ export default function ConverterPage() {
   const archiveControllerRef = useRef<AbortController | undefined>(undefined);
   const { notify } = useNotifications();
   const enqueueFiles = queue.addFiles;
-
-  useEffect(() => {
-    clearIntakeSession(state?.sessionId);
-  }, [state?.sessionId]);
 
   useEffect(
     () => () => {

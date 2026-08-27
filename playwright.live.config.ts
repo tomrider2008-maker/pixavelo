@@ -28,6 +28,15 @@ export default defineConfig({
   outputDir: 'test-results-live',
   use: {
     baseURL,
+    storageState: {
+      cookies: [],
+      origins: [
+        {
+          origin: new URL(baseURL).origin,
+          localStorage: [{ name: 'pixavelo:welcome:v1', value: '{"dismissed":true}' }]
+        }
+      ]
+    },
     serviceWorkers: 'allow',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',

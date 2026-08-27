@@ -18,7 +18,7 @@ import { clearProcessingActivity, setProcessingActivity } from '../../stores/pro
 import { formatBytes } from '../../utils/format';
 import { ImageToolInput } from '../tools/ImageToolInput';
 import { canPreviewOriginal } from '../tools/previewCapabilities';
-import { useImageTool } from '../tools/useImageTool';
+import { useIncomingImageTool } from '../tools/useIncomingImageTool';
 import { generateIconAssets, generateResponsiveAssets } from './generateWebAssets';
 import { buildSrcsetMarkup, normalizeBreakpoints, verifiedAssetCount } from './webAssetModel';
 import type { GeneratedWebBundle, WebAssetFormat, WebAssetMode } from './types';
@@ -31,7 +31,7 @@ const FORMAT_OPTIONS: readonly { id: WebAssetFormat; label: string }[] = [
 ];
 
 export default function WebAssetPage() {
-  const tool = useImageTool();
+  const tool = useIncomingImageTool();
   const [mode, setMode] = useState<WebAssetMode>('responsive');
   const [widths, setWidths] = useState(DEFAULT_WIDTHS);
   const [formats, setFormats] = useState<readonly WebAssetFormat[]>(['webp', 'avif', 'jpeg']);
