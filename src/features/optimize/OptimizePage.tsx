@@ -19,7 +19,8 @@ import { formatBytes, formatReduction } from '../../utils/format';
 import { analyzeBestSettings, calculateVisualFidelity } from '../../utils/imageAnalysis';
 import { ImageToolInput } from '../tools/ImageToolInput';
 import { canPreviewOriginal } from '../tools/previewCapabilities';
-import { resolveOutputFormat, useImageTool } from '../tools/useImageTool';
+import { useIncomingImageTool } from '../tools/useIncomingImageTool';
+import { resolveOutputFormat } from '../tools/useImageTool';
 import {
   COMPRESSION_PROFILES,
   TARGET_SIZE_PRESETS,
@@ -58,7 +59,7 @@ export default function OptimizePage() {
   const [maximumLongEdge, setMaximumLongEdge] = useState(2560);
   const [webOptimized, setWebOptimized] = useState(false);
   const [comparison, setComparison] = useState(50);
-  const tool = useImageTool();
+  const tool = useIncomingImageTool();
   const { notify } = useNotifications();
   const [fidelity, setFidelity] = useState<number | undefined>();
 

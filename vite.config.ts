@@ -3,6 +3,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { defineConfig } from 'vitest/config';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { removeSupersededCssDeclarations } from './build/css/removeSupersededCssDeclarations.ts';
 
 const packageManifest = JSON.parse(
   readFileSync(new URL('./package.json', import.meta.url), 'utf8')
@@ -35,6 +36,15 @@ const releaseMetadata = {
 };
 
 export default defineConfig({
+  css: {
+    postcss: {
+      plugins: [
+        removeSupersededCssDeclarations({
+          authoritativeSourceSuffixes: ['/src/styles/phase14.css']
+        })
+      ]
+    }
+  },
   plugins: [
     react(),
     {
@@ -142,7 +152,13 @@ export default defineConfig({
         'src/engine/pipeline/imageAdjustments.ts',
         'src/engine/registry/**/*.ts',
         'src/engine/validation/**/*.ts',
+        'src/features/intake/analyzeIntakeSelection.ts',
+        'src/features/intake/recommendIntakeActions.ts',
+        'src/features/tools/useIncomingImageTool.ts',
+        'src/features/tools/useIntakeSessionConsumer.ts',
+        'src/features/welcome/welcomePreference.ts',
         'src/services/intakeSession.ts',
+        'src/stores/localWorkGuard.ts',
         'src/utils/**/*.ts'
       ],
       thresholds: {

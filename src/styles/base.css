@@ -167,13 +167,6 @@ ul {
   align-self: flex-start;
 }
 
-.button__drop-icon {
-  width: 18px;
-  height: 18px;
-  border: 1.5px dashed currentColor;
-  border-radius: 4px;
-}
-
 .icon-button {
   display: inline-grid;
   width: 42px;
@@ -211,11 +204,6 @@ ul {
   gap: 8px;
   color: var(--color-text-muted);
   font-size: 13.5px;
-}
-
-.privacy-line--compact {
-  color: var(--color-text);
-  font-weight: 600;
 }
 
 .dialog-open {

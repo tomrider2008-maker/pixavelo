@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
 import {
   Archive,
   ChevronDown,
@@ -18,24 +17,20 @@ import {
 } from 'lucide-react';
 import { useNotifications } from '../../components/feedback/Notifications';
 import { Dialog } from '../../components/ui/Dialog';
-import { clearIntakeSession, getIntakeSession } from '../../services/intakeSession';
 import { formatBytes } from '../../utils/format';
 import { filesFromClipboardData, readClipboardImageFiles } from '../converter/clipboard';
+import { useIntakeSessionConsumer } from '../tools/useIntakeSessionConsumer';
 import { BatchQueue } from './BatchQueue';
 import { BatchRecipePanel } from './BatchRecipePanel';
 import { batchRecipeSummary } from './recipe';
 import type { BatchJob, BatchQueueFilter } from './types';
 import { useBatchQueue } from './useBatchQueue';
 
-interface BatchLocationState {
-  readonly sessionId?: string;
-}
+const EMPTY_INTAKE_FILES: readonly File[] = [];
 
 export default function BatchPage() {
-  const location = useLocation();
-  const state = location.state as BatchLocationState | null;
-  const initialFiles = useMemo(() => getIntakeSession(state?.sessionId), [state?.sessionId]);
-  const queue = useBatchQueue(initialFiles);
+  const queue = useBatchQueue(EMPTY_INTAKE_FILES);
+  useIntakeSessionConsumer(queue.addFiles);
   const addFiles = queue.addFiles;
   const { notify } = useNotifications();
   const [filter, setFilter] = useState<BatchQueueFilter>('all');
@@ -43,10 +38,6 @@ export default function BatchPage() {
   const [dragging, setDragging] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    clearIntakeSession(state?.sessionId);
-  }, [state?.sessionId]);
 
   useEffect(() => {
     const onPaste = (event: ClipboardEvent) => {

@@ -84,7 +84,11 @@ export function PreferencesProvider({ children }: { readonly children: ReactNode
     document
       .querySelector('meta[name="theme-color"]')
       ?.setAttribute('content', resolvedTheme === 'dark' ? '#070b13' : '#f4f6fb');
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
+    } catch {
+      // Preferences remain usable in memory when browser storage is unavailable.
+    }
   }, [preferences, resolvedTheme]);
 
   const setTheme = useCallback((theme: ThemePreference) => {

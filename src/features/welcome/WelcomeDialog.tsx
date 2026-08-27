@@ -1,306 +1,135 @@
-import {
-  ArrowRight,
-  Blocks,
-  Braces,
-  Crop,
-  Globe2,
-  Layers3,
-  LockKeyhole,
-  ShieldCheck,
-  Sparkles,
-  UserX,
-  WifiOff,
-  X,
-  Zap
-} from 'lucide-react';
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  type KeyboardEvent,
-  type MouseEvent,
-  type ReactNode
-} from 'react';
+import { ArrowRight, LockKeyhole, ShieldCheck, UserX, WifiOff, X } from 'lucide-react';
+import { useRef, type ChangeEvent } from 'react';
 import { Link } from 'react-router-dom';
+import { PixaveloLogo } from '../../components/brand/PixaveloLogo';
+import { Dialog } from '../../components/ui/Dialog';
+import { primaryNavigation } from '../../config/navigation';
 
 interface WelcomeDialogProps {
   readonly open: boolean;
   readonly onClose: () => void;
+  readonly onChooseFiles: (files: readonly File[]) => void;
+  readonly returnFocus?: HTMLElement | null;
 }
 
-const studios = [
-  {
-    id: 'edit',
-    label: 'Image Editor',
-    icon: Sparkles,
-    description: 'Non-destructive adjustments, crop, rotate, and transform with pixel precision.',
-    to: '/edit'
-  },
-  {
-    id: 'convert',
-    label: 'Convert & Optimize',
-    icon: Zap,
-    description: 'Convert between formats and compress for web or archival — all locally.',
-    to: '/convert'
-  },
-  {
-    id: 'resize',
-    label: 'Resize & Transform',
-    icon: Crop,
-    description: 'Exact dimensions, percentages, social presets, and smart trim in one place.',
-    to: '/resize'
-  },
-  {
-    id: 'batch',
-    label: 'Batch Processing',
-    icon: Layers3,
-    description: 'Apply multi-step recipes to hundreds of images without cloud infrastructure.',
-    to: '/batch'
-  },
-  {
-    id: 'web-assets',
-    label: 'Web Assets',
-    icon: Globe2,
-    description: 'Generate responsive image sets, favicons, and app icons from a single source.',
-    to: '/web-assets'
-  },
-  {
-    id: 'developer-tools',
-    label: 'Developer Tools',
-    icon: Braces,
-    description: 'Sprite sheets, watermarks, frame extraction, hash verification, and presets.',
-    to: '/developer-tools'
-  }
-] as const;
+const studioOrder = ['/edit', '/convert', '/optimize', '/resize', '/batch', '/web-assets'] as const;
+const studioDescriptions: Record<(typeof studioOrder)[number], string> = {
+  '/edit': 'Adjust, crop, transform and compare.',
+  '/convert': 'Change format with precise output control.',
+  '/optimize': 'Reduce size while protecting fidelity.',
+  '/resize': 'Fit exact dimensions and platform presets.',
+  '/batch': 'Run one trusted recipe across many files.',
+  '/web-assets': 'Build responsive images, icons and markup.'
+};
+
+const studios = studioOrder.flatMap((to) => {
+  const item = primaryNavigation.find((candidate) => candidate.to === to);
+  return item ? [{ ...item, description: studioDescriptions[to] }] : [];
+});
 
 const privacyProofs = [
   { icon: LockKeyhole, label: 'Local processing' },
-  { icon: ShieldCheck, label: 'No image uploads' },
-  { icon: UserX, label: 'No account required' },
+  { icon: ShieldCheck, label: 'No uploads' },
+  { icon: UserX, label: 'No account' },
   { icon: WifiOff, label: 'No tracking' }
 ] as const;
 
-const capabilities = [
-  { icon: Sparkles, label: 'Premium editing and transformations' },
-  { icon: Blocks, label: 'Modern formats — WebP, AVIF, HEIC, TIFF' },
-  { icon: Layers3, label: 'Batch workflows with preset recipes' },
-  { icon: Globe2, label: 'Responsive web asset generation' },
-  { icon: ShieldCheck, label: 'Private, browser-native processing' }
-] as const;
+export function WelcomeDialog({ open, onClose, onChooseFiles, returnFocus }: WelcomeDialogProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
 
-function focusableElements(container: HTMLElement): HTMLElement[] {
-  return Array.from(
-    container.querySelectorAll<HTMLElement>(
-      'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
-    )
-  ).filter((el) => !el.closest('[aria-hidden="true"]'));
-}
-
-export function WelcomeDialog({ open, onClose }: WelcomeDialogProps) {
-  const dialogRef = useRef<HTMLDivElement>(null);
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const studiosRef = useRef<HTMLElement>(null);
-
-  // Scroll-lock body while open
-  useEffect(() => {
-    if (!open) return;
-    const original = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = original;
-    };
-  }, [open]);
-
-  // Focus first element on open
-  useEffect(() => {
-    if (!open) return;
-    const frame = requestAnimationFrame(() => {
-      closeButtonRef.current?.focus();
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [open]);
-
-  // Return focus to trigger when closing — not needed here since dialog
-  // opens on first visit before any user action.
-
-  const handleKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLDivElement>) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        onClose();
-        return;
-      }
-      if (event.key === 'Tab') {
-        const dialog = dialogRef.current;
-        if (!dialog) return;
-        const focusable = focusableElements(dialog);
-        if (focusable.length === 0) return;
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        if (event.shiftKey) {
-          if (document.activeElement === first) {
-            event.preventDefault();
-            last?.focus();
-          }
-        } else {
-          if (document.activeElement === last) {
-            event.preventDefault();
-            first?.focus();
-          }
-        }
-      }
-    },
-    [onClose]
-  );
-
-  const handleBackdropClick = useCallback(
-    (event: MouseEvent<HTMLDivElement>) => {
-      if (event.target === event.currentTarget) {
-        onClose();
-      }
-    },
-    [onClose]
-  );
-
-  const scrollToStudios = useCallback(() => {
-    studiosRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    const firstStudio = studiosRef.current?.querySelector<HTMLElement>('a, button');
-    firstStudio?.focus({ preventScroll: true });
-  }, []);
-
-  if (!open) return null;
+  const handleFiles = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.currentTarget.files ?? []);
+    event.currentTarget.value = '';
+    if (files.length > 0) onChooseFiles(files);
+  };
 
   return (
-    <div
-      className="welcome-backdrop"
-      role="presentation"
-      aria-hidden="false"
-      onClick={handleBackdropClick}
+    <Dialog
+      open={open}
+      title="Welcome to Pixavelo"
+      description="Choose images or open a private, browser-based image studio."
+      onClose={onClose}
+      className="welcome-dialog premium-dialog-panel"
+      backdropClassName="welcome-backdrop premium-dialog-backdrop"
+      returnFocus={returnFocus}
     >
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="welcome-title"
-        className="welcome-dialog"
-        onKeyDown={handleKeyDown}
-      >
-        {/* Close button */}
+      <header className="welcome-topbar premium-dialog-header">
+        <PixaveloLogo compact />
         <button
-          ref={closeButtonRef}
           type="button"
-          className="welcome-close"
+          className="icon-button welcome-close"
           aria-label="Close welcome guide"
           onClick={onClose}
         >
           <X size={18} aria-hidden="true" />
         </button>
+      </header>
 
-        <div className="welcome-scroll">
-          {/* Hero */}
-          <header className="welcome-hero" aria-labelledby="welcome-title">
-            <div className="welcome-wordmark" aria-hidden="true">
-              <WelcomeWordmark />
-            </div>
-            <h1 id="welcome-title" className="welcome-headline">
-              Your private image studio.
-            </h1>
-            <p className="welcome-subtext">
-              Professional image tools that run entirely in your browser — no servers, no accounts,
-              no uploads.
-            </p>
-            <div className="welcome-hero__actions">
-              <button
-                type="button"
-                className="button button--primary welcome-cta"
-                onClick={onClose}
-              >
-                Start creating
-                <ArrowRight size={16} aria-hidden="true" />
-              </button>
-              <button type="button" className="button button--secondary" onClick={scrollToStudios}>
-                Explore the studios
-              </button>
-            </div>
-          </header>
-
-          {/* Privacy proof */}
-          <section className="welcome-privacy" aria-label="Privacy guarantees">
-            {privacyProofs.map(({ icon: Icon, label }) => (
-              <div key={label} className="welcome-privacy__badge">
-                <Icon size={15} aria-hidden="true" />
-                <span>{label}</span>
-              </div>
-            ))}
-          </section>
-
-          {/* Studios */}
-          <section
-            ref={studiosRef}
-            className="welcome-studios"
-            aria-labelledby="welcome-studios-title"
-          >
-            <h2 id="welcome-studios-title" className="welcome-section-title">
-              Six studios. One browser tab.
-            </h2>
-            <div className="welcome-studios__grid">
-              {studios.map(({ id, label, icon: Icon, description, to }) => (
-                <Link key={id} to={to} className="welcome-studio-card" onClick={onClose}>
-                  <span className="welcome-studio-card__icon" aria-hidden="true">
-                    <Icon size={20} strokeWidth={1.65} />
-                  </span>
-                  <span className="welcome-studio-card__body">
-                    <strong>{label}</strong>
-                    <small>{description}</small>
-                  </span>
-                  <ArrowRight size={14} className="welcome-studio-card__arrow" aria-hidden="true" />
-                </Link>
-              ))}
-            </div>
-          </section>
-
-          {/* Capability highlights */}
-          <section className="welcome-capabilities" aria-labelledby="welcome-cap-title">
-            <h2 id="welcome-cap-title" className="welcome-section-title">
-              Built for serious image work.
-            </h2>
-            <ul className="welcome-capabilities__list" role="list">
-              {capabilities.map(({ icon: Icon, label }) => (
-                <li key={label}>
-                  <Icon size={15} aria-hidden="true" />
-                  <span>{label}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          {/* Trust footer */}
-          <footer className="welcome-trust">
-            <ShieldCheck size={17} aria-hidden="true" />
+      <div className="welcome-layout">
+        <section className="welcome-hero" aria-labelledby="welcome-title">
+          <div>
+            <h1 id="welcome-title">Your private image studio.</h1>
             <p>
-              Every file you open is processed using your browser&rsquo;s compute power. Nothing
-              leaves your device. There are no servers involved.
+              Edit, convert, optimize and prepare images without sending a single file to a server.
             </p>
-          </footer>
-        </div>
-      </div>
-    </div>
-  );
-}
+          </div>
+          <div className="welcome-actions">
+            <button
+              type="button"
+              className="button button--primary"
+              onClick={() => inputRef.current?.click()}
+            >
+              Choose images
+              <ArrowRight size={16} aria-hidden="true" />
+            </button>
+            <button type="button" className="button button--secondary" onClick={onClose}>
+              Continue to dashboard
+            </button>
+            <input
+              ref={inputRef}
+              className="sr-only"
+              type="file"
+              accept="image/*,.jfif,.heic,.heif,.tif,.tiff,.ico"
+              multiple
+              tabIndex={-1}
+              aria-label="Choose image files"
+              onChange={handleFiles}
+            />
+          </div>
+          <div className="welcome-privacy" aria-label="Privacy guarantees">
+            {privacyProofs.map(({ icon: Icon, label }) => (
+              <span key={label}>
+                <Icon size={16} strokeWidth={1.7} aria-hidden="true" />
+                <span>{label}</span>
+              </span>
+            ))}
+          </div>
+        </section>
 
-function WelcomeWordmark(): ReactNode {
-  return (
-    <svg
-      width="32"
-      height="32"
-      viewBox="0 0 32 32"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <rect width="32" height="32" rx="8" fill="currentColor" />
-      <rect x="6" y="6" width="20" height="20" rx="4" fill="var(--color-surface)" />
-      <rect x="10" y="10" width="12" height="12" rx="2" fill="currentColor" />
-    </svg>
+        <section className="welcome-studios" aria-labelledby="welcome-studios-title">
+          <h2 id="welcome-studios-title">Choose a studio</h2>
+          <div className="welcome-studios__grid studio-grid">
+            {studios.map(({ label, icon: Icon, description, to }) => (
+              <Link key={to} to={to} className="welcome-studio-card studio-card" onClick={onClose}>
+                <span className="studio-card__icon" aria-hidden="true">
+                  <Icon size={20} strokeWidth={1.65} />
+                </span>
+                <span className="studio-card__copy">
+                  <strong>{label}</strong>
+                  <small className="studio-card__description">{description}</small>
+                </span>
+                <ArrowRight className="studio-card__arrow" size={15} aria-hidden="true" />
+              </Link>
+            ))}
+          </div>
+        </section>
+      </div>
+
+      <footer className="welcome-trust premium-dialog-trust">
+        <ShieldCheck size={17} aria-hidden="true" />
+        <strong>Your files stay on this device.</strong>
+        <span>No server receives or processes your image files.</span>
+      </footer>
+    </Dialog>
   );
 }

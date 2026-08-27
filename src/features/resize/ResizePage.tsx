@@ -19,14 +19,15 @@ import {
   WandSparkles,
   X
 } from 'lucide-react';
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useNotifications } from '../../components/feedback/Notifications';
 import { resolveTransformGeometry } from '../../engine/pipeline/geometry';
 import type { CoreImageFormat, ImageCrop, ImageRotation } from '../../types/images';
 import { formatBytes } from '../../utils/format';
 import { ImageToolInput } from '../tools/ImageToolInput';
 import { canPreviewOriginal } from '../tools/previewCapabilities';
-import { resolveOutputFormat, useImageTool } from '../tools/useImageTool';
+import { useIncomingImageTool } from '../tools/useIncomingImageTool';
+import { resolveOutputFormat } from '../tools/useImageTool';
 import { CropPreview } from './CropPreview';
 import { clampCrop, fitCropToAspect } from './cropMath';
 import { clampDimension, resolveResizeDimensions } from './resizeMath';
@@ -81,8 +82,9 @@ const FIT_LABELS: Readonly<Record<ImageFitMode, string>> = {
 
 export default function ResizePage() {
   const requestedPreset = readResizePreset();
-  const tool = useImageTool();
+  const tool = useIncomingImageTool();
   const { notify } = useNotifications();
+  const initializedSourceUrlRef = useRef<string | undefined>(undefined);
   const [ambientColor, setAmbientColor] = useState<string>('transparent');
   const [crop, setCrop] = useState<ImageCrop>({ x: 0, y: 0, width: 1, height: 1 });
   const [width, setWidth] = useState(1);
@@ -135,39 +137,54 @@ export default function ResizePage() {
   const selectedWebPreset =
     WEB_PRESETS.find((preset) => preset.id === webPresetId) ?? WEB_PRESETS[0];
 
-  const initializeTransform = (nextSourceWidth: number, nextSourceHeight: number) => {
-    const nextCrop = { x: 0, y: 0, width: nextSourceWidth, height: nextSourceHeight };
-    const presetWidth =
-      requestedPreset === '1920' ? Math.min(1920, nextSourceWidth) : nextSourceWidth;
-    setCrop(nextCrop);
-    setWidth(presetWidth);
-    setHeight(Math.max(1, Math.round((nextSourceHeight / nextSourceWidth) * presetWidth)));
-    setPercentage(100);
-    setEdge(Math.min(1920, Math.max(nextSourceWidth, nextSourceHeight)));
-    setMegapixels(Math.round((nextSourceWidth * nextSourceHeight) / 100_000) / 10);
-    setDimensionsLinked(true);
-    setPreventUpscale(true);
-    setAspect('original');
-    setRotation(0);
-    setFlipHorizontal(false);
-    setFlipVertical(false);
-    setCanvasMode('crop');
-    setPreviewMode('source');
-    setZoom(100);
-    setFormat('keep');
-    setQuality(88);
-    setFitMode('contain');
-    setResizeMethod(requestedPreset === '1920' ? 'width' : 'exact');
-    setPresetCategory('custom');
-    setActivePreset(requestedPreset ?? 'original');
-  };
+  const initializeTransform = useCallback(
+    (nextSourceWidth: number, nextSourceHeight: number) => {
+      const nextCrop = { x: 0, y: 0, width: nextSourceWidth, height: nextSourceHeight };
+      const presetWidth =
+        requestedPreset === '1920' ? Math.min(1920, nextSourceWidth) : nextSourceWidth;
+      setCrop(nextCrop);
+      setWidth(presetWidth);
+      setHeight(Math.max(1, Math.round((nextSourceHeight / nextSourceWidth) * presetWidth)));
+      setPercentage(100);
+      setEdge(Math.min(1920, Math.max(nextSourceWidth, nextSourceHeight)));
+      setMegapixels(Math.round((nextSourceWidth * nextSourceHeight) / 100_000) / 10);
+      setDimensionsLinked(true);
+      setPreventUpscale(true);
+      setAspect('original');
+      setRotation(0);
+      setFlipHorizontal(false);
+      setFlipVertical(false);
+      setCanvasMode('crop');
+      setPreviewMode('source');
+      setZoom(100);
+      setFormat('keep');
+      setQuality(88);
+      setFitMode('contain');
+      setResizeMethod(requestedPreset === '1920' ? 'width' : 'exact');
+      setPresetCategory('custom');
+      setActivePreset(requestedPreset ?? 'original');
+    },
+    [requestedPreset]
+  );
 
-  const chooseFile = async (file: File | undefined) => {
-    const report = await tool.chooseFile(file);
-    if (report?.supportedByConverter && report.dimensions) {
-      initializeTransform(report.dimensions.width, report.dimensions.height);
+  useEffect(() => {
+    if (!tool.file || !tool.sourceUrl) {
+      initializedSourceUrlRef.current = undefined;
+      return;
     }
-  };
+    const dimensions = tool.validation?.dimensions;
+    if (
+      !tool.validation?.supportedByConverter ||
+      !dimensions ||
+      initializedSourceUrlRef.current === tool.sourceUrl
+    ) {
+      return;
+    }
+    initializedSourceUrlRef.current = tool.sourceUrl;
+    initializeTransform(dimensions.width, dimensions.height);
+  }, [initializeTransform, tool.file, tool.sourceUrl, tool.validation]);
+
+  const chooseFile = tool.chooseFile;
 
   const requestedDimensions = useMemo(
     () =>

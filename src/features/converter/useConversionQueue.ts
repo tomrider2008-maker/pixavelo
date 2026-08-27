@@ -358,7 +358,7 @@ export function useConversionQueue(
   );
 
   useEffect(() => {
-    const active = jobs.filter((job) => job.status === 'processing');
+    const active = jobs.filter((job) => ['validating', 'processing'].includes(job.status));
     setProcessingActivity({
       queued: jobs.filter((job) => job.status === 'ready').length,
       active: active.length,

@@ -18,7 +18,7 @@ import { toAppError } from '../../engine/errors/AppError';
 import { resolveTransformGeometry } from '../../engine/pipeline/geometry';
 import { formatBytes, formatReduction } from '../../utils/format';
 import { ImageToolInput } from '../tools/ImageToolInput';
-import { useImageTool } from '../tools/useImageTool';
+import { useIncomingImageTool } from '../tools/useIncomingImageTool';
 import { decodeEditorSource, type DecodedEditorSource } from './decodeEditorSource';
 import { EditorCanvas } from './EditorCanvas';
 import { EditorInspector } from './EditorInspector';
@@ -56,7 +56,7 @@ const stageLabels = {
 } as const;
 
 export default function EditorPage() {
-  const tool = useImageTool();
+  const tool = useIncomingImageTool();
   const { notify } = useNotifications();
   const [decoded, setDecoded] = useState<DecodedEditorSource>();
   const [analysis, setAnalysis] = useState<EditorImageAnalysis>();

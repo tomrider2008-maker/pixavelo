@@ -1,18 +1,19 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
+import { describe, expect, it, vi } from 'vitest';
+import { ImageIntakeContext } from '../intake/IntakeContext';
 import DashboardPage from './DashboardPage';
 
 describe('DashboardPage', () => {
-  it('presents the privacy promise and routes selected files into the converter', async () => {
+  it('presents the privacy promise and opens selected files in smart intake', async () => {
     const user = userEvent.setup();
+    const openImageIntake = vi.fn();
     render(
       <MemoryRouter initialEntries={['/']}>
-        <Routes>
-          <Route path="/" element={<DashboardPage />} />
-          <Route path="/convert" element={<h1>Converter workspace</h1>} />
-        </Routes>
+        <ImageIntakeContext.Provider value={{ openImageIntake }}>
+          <DashboardPage />
+        </ImageIntakeContext.Provider>
       </MemoryRouter>
     );
 
@@ -23,7 +24,8 @@ describe('DashboardPage', () => {
 
     const input = document.querySelector<HTMLInputElement>('[data-image-input]');
     if (!input) throw new Error('Dashboard image input was not rendered.');
-    await user.upload(input, new File(['image'], 'photo.png', { type: 'image/png' }));
-    expect(await screen.findByRole('heading', { name: 'Converter workspace' })).toBeVisible();
+    const image = new File(['image'], 'photo.png', { type: 'image/png' });
+    await user.upload(input, image);
+    expect(openImageIntake).toHaveBeenCalledWith([image]);
   });
 });

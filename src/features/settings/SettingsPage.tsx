@@ -1,6 +1,5 @@
 import { BookOpen, MonitorCog } from 'lucide-react';
 import { usePreferences, type ThemePreference } from '../../stores/preferences';
-import { resetWelcome } from '../welcome/welcomePreference';
 
 const themeOptions: readonly { readonly value: ThemePreference; readonly label: string }[] = [
   { value: 'system', label: 'Use system setting' },
@@ -74,8 +73,10 @@ export default function SettingsPage() {
             <button
               type="button"
               className="button button--secondary settings-welcome-btn"
-              onClick={() => {
-                resetWelcome();
+              onClick={(event) => {
+                // WebKit does not consistently focus a clicked button. Establish
+                // an explicit return target before the modal makes the page inert.
+                event.currentTarget.focus({ preventScroll: true });
                 window.dispatchEvent(new CustomEvent('pixavelo:show-welcome'));
               }}
             >

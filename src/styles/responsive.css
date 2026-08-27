@@ -65,8 +65,7 @@
     border-radius: var(--radius-sm);
   }
 
-  .optimize-layout,
-  .resize-layout {
+  .optimize-layout {
     grid-template-columns: minmax(0, 1fr) 270px;
     gap: 18px;
   }
@@ -239,8 +238,7 @@
     width: min(100% - 36px, 760px);
   }
 
-  .optimize-layout,
-  .resize-layout {
+  .optimize-layout {
     grid-template-columns: 1fr;
   }
 
@@ -305,10 +303,6 @@
     width: 100%;
     min-height: 52px;
     font-size: 16px;
-  }
-
-  .desktop-only {
-    display: none;
   }
 
   .dashboard-intro .privacy-line {
@@ -463,14 +457,6 @@
 
   .tool-summary__empty {
     min-height: 100px;
-  }
-
-  .resize-presets {
-    margin-right: -16px;
-  }
-
-  .resize-presets button {
-    min-width: 128px;
   }
 
   .transform-inspector fieldset {

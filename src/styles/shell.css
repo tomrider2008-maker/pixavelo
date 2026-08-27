@@ -8,6 +8,10 @@
     / var(--sidebar-width) minmax(0, 1fr);
 }
 
+.app-shell__workspace {
+  display: contents;
+}
+
 .app-header {
   grid-area: header;
   position: sticky;
@@ -36,10 +40,6 @@
   width: 31px;
   height: 31px;
   flex: 0 0 auto;
-}
-
-.brand__cutout {
-  fill: var(--color-surface);
 }
 
 .brand__name {
