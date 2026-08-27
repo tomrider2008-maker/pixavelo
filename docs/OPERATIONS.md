@@ -25,8 +25,9 @@ revision, commit time and clean-tree state. `.artifacts/release/` contains a Cyc
 digest inventory; retain these with the deployment record.
 
 For GitHub-hosted operation, configure the protected `production` environment and the
-`CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID` secrets, require reviewer approval as appropriate, and dispatch the
-Production release workflow with `DEPLOY`. The workflow uses one concurrency group for releases and rollbacks.
+`CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID` secrets, then dispatch the Production release workflow with `DEPLOY`.
+The solo-maintainer policy does not require an independent reviewer; protected branches, explicit confirmation and
+all automated release checks remain mandatory. The workflow uses one concurrency group for releases and rollbacks.
 The complete GitHub activation, branch-protection and least-privilege secret inventory is in
 `docs/GITHUB_OPERATIONS_ACTIVATION.md`.
 
@@ -118,12 +119,15 @@ npm run report:slo -- --input docs/evidence/phase13 --input tmp/slo-ledger
 The report rejects modified evidence hashes, deduplicates observations and requires continuous hourly endpoint plus
 daily privacy coverage before setting `claimable30DayWindow` to true. Workflow failures open or update one GitHub issue
 linked to the failing run. No user filename, image, metadata, pixel, download or persistent identifier is recorded.
+An incomplete 30-day window is emitted as a visible release advisory and does not change the reporter's evidence
+integrity rules or the hard failure behavior of current privacy/release checks.
 
 ## Maintenance
 
 - Dependabot groups npm production/development updates and checks pinned GitHub Actions weekly.
 - Apply production dependency changes only after the full release gate and bundle/codec budget review.
-- Review `npm audit`, the CycloneDX SBOM, runtime licenses and the browser/device matrix for every release.
+- Review `npm audit`, the CycloneDX SBOM and runtime licenses for every release; record opportunistic physical-device
+  coverage when suitable hardware is available.
 - Rotate Cloudflare tokens according to organizational policy; never commit OAuth or API credentials.
 - The schedules are installed on the GitHub default branch. Treat them as operationally observed only after actual
   hourly and daily `schedule` event records exist; a manual dispatch proves the workflow, not the scheduler.

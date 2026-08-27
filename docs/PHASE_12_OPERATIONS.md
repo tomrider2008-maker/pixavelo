@@ -26,14 +26,18 @@ no-account and no-upload architecture.
 | Tested rollback mechanism                 | Guard and API contract automated; production rollback intentionally not invoked | `rollback-pages.mjs`, protected workflow                    |
 | PWA recovery                              | Automated                                                                       | `e2e/phase12.spec.ts`                                       |
 | Performance regression budgets            | Automated                                                                       | artifact and live startup-transfer checks                   |
-| Physical current-device matrix            | Pending real hardware                                                           | `docs/PHYSICAL_DEVICE_QA.md`                                |
-| 30-day 99.9% observation window           | Pending elapsed monitoring time                                                 | `docs/SLO.md`                                               |
+| Physical current-device matrix            | Pending advisory evidence                                                       | `docs/PHYSICAL_DEVICE_QA.md`                                |
+| 30-day 99.9% observation window           | Pending advisory observation                                                    | `docs/SLO.md`                                               |
 
 The pending rows are evidence that necessarily accrues outside a single build. They are not represented as passed.
 Scheduled GitHub monitoring also requires the repository to be hosted with Actions enabled; local commits alone do not
 start schedules.
 
-## Expansion gate
+## Historical expansion gate
 
 Phase 13 should not change production until the new release passes the device matrix and the operational checks have
 produced a stable observation record. Any privacy or release-integrity miss pauses expansion immediately.
+
+This was the Phase 12 policy and is preserved as historical release evidence. On 2026-08-27 the owner adopted the
+documented Phase 13 solo-maintainer revision: physical-device coverage and the complete 30-day history remain tracked
+but no longer block deployment. Current automated privacy and release-integrity failures still pause releases.

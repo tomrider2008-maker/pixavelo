@@ -76,8 +76,9 @@ See `docs/OPERATIONS.md` for the exact command and incident procedure.
 - The application has no server-side image-processing service and intentionally emits no image telemetry.
 - Production monitoring is synthetic and privacy-preserving: availability, headers, rendering and generated test
   image conversion only.
-- Browser automation does not replace the physical Safari/iOS Safari and Android Chrome release checklist.
+- Browser automation does not become physical Safari/iOS Safari or Android Chrome evidence; physical testing is
+  opportunistic QA and is logged honestly when performed.
 - Advanced formats are import-only. First-frame/page/primary-image boundaries are product behavior, not temporary
   omissions, and must remain disclosed until multi-frame/page export is implemented.
 - Scheduled workflows require a GitHub-hosted repository with Actions enabled. The 30-day SLO and physical-device
-  rows remain pending until their external evidence windows are completed.
+  rows remain reported as non-blocking advisories until their external evidence windows are completed.

@@ -51,7 +51,17 @@ if (command === 'init') {
   summary.certifiedPlatforms = [...platforms].filter(
     (platform) => summary.platformCoverage[platform].complete
   );
+  summary.uncertifiedPlatforms = [...platforms].filter(
+    (platform) => !summary.platformCoverage[platform].complete
+  );
   summary.complete = summary.certifiedPlatforms.length === platforms.size;
+  summary.releasePolicy = {
+    blocking: false,
+    disposition: summary.complete ? 'observed' : 'warning',
+    warning: summary.complete
+      ? null
+      : `Physical-device coverage is incomplete for: ${summary.uncertifiedPlatforms.join(', ')}. This is recorded QA evidence and does not block release.`
+  };
   if (options.output) {
     await mkdir(dirname(options.output), { recursive: true });
     await writeFile(options.output, `${JSON.stringify(summary, null, 2)}\n`);
@@ -59,6 +69,9 @@ if (command === 'init') {
   console.log(
     `Device certification: ${summary.certifiedPlatforms.length}/${summary.requiredPlatforms.length} platforms passed; complete=${summary.complete}.`
   );
+  if (summary.releasePolicy.warning) {
+    console.warn(`WARNING: ${summary.releasePolicy.warning}`);
+  }
 } else if (command === 'hash') {
   if (!options.file) throw new Error('hash requires --file.');
   console.log(await fileSha256(options.file));
@@ -238,7 +251,13 @@ function normalizeBrowser(browser) {
 }
 
 async function jsonFiles(path) {
-  const metadata = await stat(path);
+  let metadata;
+  try {
+    metadata = await stat(path);
+  } catch (error) {
+    if (error?.code === 'ENOENT') return [];
+    throw error;
+  }
   if (metadata.isFile()) return [path];
   const output = [];
   for (const entry of await readdir(path, { withFileTypes: true })) {

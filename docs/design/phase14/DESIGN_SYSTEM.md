@@ -2,7 +2,8 @@
 
 Status: implementation reference  
 Scope: existing Pixavelo application shell, dashboard, shared controls, dense tool surfaces, and responsive states  
-Production policy: branch preview only until the Phase 12 expansion gate is approved
+Historical production policy: branch preview only until the Phase 12 expansion gate was revised on 2026-08-27
+Current policy: automated release gates remain blocking; physical-device and 30-day evidence are advisory
 
 ## Product character
 

@@ -104,7 +104,16 @@ const report = {
   privacy: { objective: 1, failed: privacyFailed, coverage: privacyCoverage },
   releaseIntegrity: { failed: releaseIntegrityFailed, revisions },
   latency: { failed: latencyFailed, maximumRouteDurationMs, guardrailMs: 5000 },
-  objectivesMet
+  objectivesMet,
+  releasePolicy: {
+    blocking: false,
+    disposition: objectivesMet ? 'observed' : 'warning',
+    warning: objectivesMet
+      ? null
+      : claimable30DayWindow
+        ? 'One or more SLO objectives are not met. Investigate the recorded failures; this historical-window report remains advisory for release policy.'
+        : 'The continuous observation window is incomplete. Keep monitoring and report the gap; the 30-day window is advisory and does not block release.'
+  }
 };
 const jsonPath = options.outputJson ?? '.artifacts/operations/slo-report.json';
 const markdownPath = options.outputMarkdown ?? '.artifacts/operations/slo-report.md';
@@ -115,6 +124,9 @@ await Promise.all([
 console.log(
   `SLO report: ${observations.length} observations, ${claimable30DayWindow ? 'complete' : 'incomplete'} ${days}-day window, objectives ${objectivesMet ? 'met' : 'not claimable/met'}.`
 );
+if (report.releasePolicy.warning) {
+  console.warn(`WARNING: ${report.releasePolicy.warning}`);
+}
 
 function coverage(entries, start, end, maximumGapMinutes) {
   if (entries.length === 0) return { complete: false, maximumGapMinutes: null };
@@ -147,8 +159,11 @@ function markdown(value) {
 - Latency failures: ${value.latency.failed}
 - Deployment revisions: ${value.releaseIntegrity.revisions.join(', ') || 'not observed'}
 - Objectives met: ${value.objectivesMet ? 'yes' : 'not yet claimable/met'}
+- Release blocking: no (solo-maintainer advisory policy)
 
 ${value.window.reason ?? 'The full observation window is present.'}
+
+${value.releasePolicy.warning ? `> WARNING: ${value.releasePolicy.warning}` : 'No SLO policy warning is active.'}
 `;
 }
 

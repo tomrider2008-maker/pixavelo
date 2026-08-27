@@ -9,18 +9,18 @@ production deployment was performed by this activation.
 
 State verified on 2026-08-27 UTC:
 
-| Control                      | Status                              | Verifiable evidence                                                                                                                |
-| ---------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Public GitHub remote         | Active                              | `origin` is `https://github.com/tomrider2008-maker/pixavelo.git`; visibility is API-verified as `public`.                          |
-| Actions policy               | Active                              | GitHub-owned actions only, full-SHA pinning required, default token read-only, PR approval disabled.                               |
-| Main CI                      | Passed                              | Run `33036366350` passed quality plus Chromium, Firefox, WebKit and both mobile profiles on revision `b3910e2…`.                   |
-| Manual production operations | Passed                              | Run `32879256015` passed endpoint plus all five browser projects and retained six artifacts for 90 days.                           |
-| Failure escalation           | Exercised and recovered             | Run `32878411383` opened issue `#2`; the successful recovery run was linked and the issue was closed.                              |
-| Hourly/daily schedules       | Active; continuity incomplete       | Schedule events exist from 2026-08-25; failures and a later gap over 90 minutes prevent a claimable 30-day window.                 |
-| Dependency/secret controls   | Active                              | Dependabot security updates, secret scanning and push protection are enabled; weekly npm/action updates are configured.            |
-| Protected `main`             | Enforced                            | PR, one approval, last-push approval, six strict checks, conversations and linear history are required for administrators too.     |
-| `production` environment     | Enforced; reviewer capacity pending | Protected branches only, required reviewer and self-review prevention are active; a second trusted collaborator is still required. |
-| Cloudflare secrets           | Active                              | Both production-environment secrets are installed; the token was verified against the `pixavelo` Pages project.                    |
+| Control                      | Status                        | Verifiable evidence                                                                                                         |
+| ---------------------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Public GitHub remote         | Active                        | `origin` is `https://github.com/tomrider2008-maker/pixavelo.git`; visibility is API-verified as `public`.                   |
+| Actions policy               | Active                        | GitHub-owned actions only, full-SHA pinning required, default token read-only, PR approval disabled.                        |
+| Main CI                      | Passed                        | Run `33036366350` passed quality plus Chromium, Firefox, WebKit and both mobile profiles on revision `b3910e2…`.            |
+| Manual production operations | Passed                        | Run `32879256015` passed endpoint plus all five browser projects and retained six artifacts for 90 days.                    |
+| Failure escalation           | Exercised and recovered       | Run `32878411383` opened issue `#2`; the successful recovery run was linked and the issue was closed.                       |
+| Hourly/daily schedules       | Active; continuity incomplete | Schedule events exist from 2026-08-25; failures and a later gap over 90 minutes prevent a claimable 30-day window.          |
+| Dependency/secret controls   | Active                        | Dependabot security updates, secret scanning and push protection are enabled; weekly npm/action updates are configured.     |
+| Protected `main`             | Automated gates enforced      | PR, six strict checks, conversations, linear history, no force-push/deletion and administrator enforcement remain required. |
+| `production` environment     | Manual policy update pending  | Protected branches remain required; the obsolete independent-review rule still needs the owner-run API change below.        |
+| Cloudflare secrets           | Active                        | Both production-environment secrets are installed; the token was verified against the `pixavelo` Pages project.             |
 
 ## Repository controls
 
@@ -37,14 +37,51 @@ runtime still declared by Pixavelo. Revisit both guards with the corresponding t
 ## Protected production environment
 
 The environment named exactly `production` accepts deployments only from protected branches. The release and rollback
-workflows target it and share the `production-release` concurrency group. A reviewer is required and self-review is
-prevented.
+workflows target it and share the `production-release` concurrency group.
 
-`main` requires a pull request, one approval, dismissal of stale approvals, approval by someone other than the last
-pusher, resolution of conversations, strict success from `quality` and all five browser jobs, linear history, and no
-force-push or deletion. Administrators are included. The repository currently has one collaborator, so a second
-trusted collaborator must be added before an independent review or production approval can complete. Do not weaken
-self-review prevention to work around that missing human control.
+The 2026-08-27 solo-maintainer policy removes independent approval as a release requirement. It does not remove pull
+requests, resolution of conversations, strict success from `quality` and all five browser jobs, linear history, or the
+force-push/deletion block. Administrators remain subject to those automated controls.
+
+Branch and environment protection are GitHub settings, not repository files. This change intentionally does not
+mutate them. Until the owner applies the commands below, the currently configured one-review and self-review rules
+will continue to block the solo maintainer.
+
+### Owner-run solo-maintainer policy commands
+
+Keep the pull-request rule but set the approval count to zero:
+
+```powershell
+gh api --method PATCH repos/tomrider2008-maker/pixavelo/branches/main/protection/required_pull_request_reviews `
+  -F dismiss_stale_reviews=false `
+  -F require_code_owner_reviews=false `
+  -F required_approving_review_count=0 `
+  -F require_last_push_approval=false
+```
+
+Remove only the production reviewer requirement while preserving protected-branch deployment:
+
+```powershell
+@'
+{
+  "wait_timer": 0,
+  "prevent_self_review": false,
+  "reviewers": [],
+  "deployment_branch_policy": {
+    "protected_branches": true,
+    "custom_branch_policies": false
+  }
+}
+'@ | gh api --method PUT repos/tomrider2008-maker/pixavelo/environments/production --input -
+```
+
+Verify that the six status contexts, administrator enforcement, linear history, conversation resolution and
+force-push/deletion blocks remain unchanged:
+
+```powershell
+gh api repos/tomrider2008-maker/pixavelo/branches/main/protection
+gh api repos/tomrider2008-maker/pixavelo/environments/production
+```
 
 ## Secret inventory
 
@@ -63,7 +100,8 @@ Pages project and production branch `main`; no deployment or rollback was invoke
 The successful manual production-operations run retained one endpoint artifact and five browser artifacts through
 2026-11-23 UTC. Actual scheduled runs began on 2026-08-25. Several scheduled runs failed on 2026-08-26 and the latest
 observed sequence later exceeded the 90-minute endpoint-gap limit. These are real operational observations, but they
-cannot be represented as a continuous or claimable 30-day window.
+cannot be represented as a continuous or claimable 30-day window. Under the 2026-08-27 policy they remain a visible
+advisory and do not block a release whose current automated gates pass.
 
 The first operations run exposed a source-less Firefox runtime diagnostic, correctly opened issue `#2`, and retained
 failure evidence. The monitor was narrowed to annotate only that exact source-less Firefox diagnostic while still
@@ -88,5 +126,6 @@ npm run report:slo -- --input docs/evidence/phase13 --input tmp/slo-ledger
 
 Review schedule continuity and the daily privacy artifact separately. A new 30-day window starts only after the latest
 failure or excessive evidence gap and remains unclaimable until the reporter returns `claimable30DayWindow: true`.
+The missing historical window is advisory; a current privacy or release-integrity failure remains blocking.
 Exercise future failure escalation only with a safe preview or a naturally failing check; do not deliberately break
 the canonical production URL.
