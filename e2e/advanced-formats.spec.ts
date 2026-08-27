@@ -125,7 +125,16 @@ test('Phase 4 decodes every advanced format locally and isolates unsafe SVG', as
   await page.getByText('Input capabilities', { exact: true }).click();
   await expect(page.getByText('Advanced input support')).toBeVisible();
   await expect(page.getByText('Outputs remain JPEG, PNG or WebP.')).toBeVisible();
-  await page.getByLabel('Global output format').selectOption('png');
+  if (isMobile) {
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  }
+  await page
+    .getByRole('group', { name: 'Global output format' })
+    .getByRole('radio', { name: 'PNG' })
+    .check();
+  if (isMobile) {
+    await page.getByRole('button', { name: 'Close output settings' }).first().click();
+  }
   await page.getByRole('button', { name: isMobile ? 'Process remaining' : 'Process all' }).click();
 
   await expect(queue.getByText('Completed', { exact: true })).toHaveCount(7, { timeout: 120_000 });
