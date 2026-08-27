@@ -1,0 +1,423 @@
+/* ==========================================================================
+   Welcome Dialog
+   Premium first-launch overlay — restrained, editorial, high-end
+   ========================================================================== */
+
+/* Backdrop ---------------------------------------------------------------- */
+.welcome-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.52);
+  backdrop-filter: blur(4px);
+  animation: welcome-backdrop-in 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes welcome-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Dialog panel ------------------------------------------------------------ */
+.welcome-dialog {
+  position: relative;
+  width: 100%;
+  max-width: 760px;
+  max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-dialog);
+  outline: none;
+  overflow: hidden;
+  animation: welcome-panel-in 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes welcome-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Scrollable inner -------------------------------------------------------- */
+.welcome-scroll {
+  height: 100%;
+  max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+  padding: 0 0 env(safe-area-inset-bottom, 0);
+}
+
+/* Close button ------------------------------------------------------------ */
+.welcome-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 10;
+  display: flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.welcome-close:hover {
+  color: var(--color-text);
+  background: var(--color-canvas-depth);
+  border-color: var(--color-border-strong);
+}
+
+.welcome-close:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* Hero -------------------------------------------------------------------- */
+.welcome-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 52px 52px 40px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-canvas-subtle);
+}
+
+.welcome-wordmark {
+  color: var(--color-accent);
+  margin-bottom: 20px;
+}
+
+.welcome-headline {
+  margin: 0 0 12px;
+  font-size: 2rem;
+  font-weight: 780;
+  letter-spacing: -0.045em;
+  line-height: 1.12;
+  color: var(--color-text);
+}
+
+.welcome-subtext {
+  margin: 0 0 32px;
+  max-width: 54ch;
+  font-size: 15.5px;
+  font-weight: 420;
+  line-height: 1.62;
+  color: var(--color-text-muted);
+}
+
+.welcome-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.welcome-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Privacy proof ----------------------------------------------------------- */
+.welcome-privacy {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.welcome-privacy__badge {
+  display: flex;
+  flex: 1 1 160px;
+  align-items: center;
+  gap: 9px;
+  padding: 14px 24px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 520;
+  border-right: 1px solid var(--color-border);
+}
+
+.welcome-privacy__badge:last-child {
+  border-right: none;
+}
+
+.welcome-privacy__badge svg {
+  flex-shrink: 0;
+  color: var(--color-accent);
+}
+
+/* Section title ----------------------------------------------------------- */
+.welcome-section-title {
+  margin: 0 0 20px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+}
+
+/* Studios grid ------------------------------------------------------------ */
+.welcome-studios {
+  padding: 36px 52px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.welcome-studios__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.welcome-studio-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  color: var(--color-text);
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.welcome-studio-card:hover {
+  background: var(--color-surface-selected);
+  border-color: color-mix(in srgb, var(--color-accent) 30%, var(--color-border));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.welcome-studio-card:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.welcome-studio-card__icon {
+  display: flex;
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+  border-radius: var(--radius-sm);
+}
+
+.welcome-studio-card__body {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 3px;
+}
+
+.welcome-studio-card__body strong {
+  font-size: 13.5px;
+  font-weight: 640;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+}
+
+.welcome-studio-card__body small {
+  font-size: 12px;
+  font-weight: 420;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.welcome-studio-card__arrow {
+  flex-shrink: 0;
+  color: var(--color-text-subtle);
+  transition: transform var(--transition-fast);
+}
+
+.welcome-studio-card:hover .welcome-studio-card__arrow {
+  transform: translateX(3px);
+}
+
+/* Capabilities ------------------------------------------------------------ */
+.welcome-capabilities {
+  padding: 36px 52px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-canvas-subtle);
+}
+
+.welcome-capabilities__list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 32px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.welcome-capabilities__list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  font-weight: 480;
+  color: var(--color-text-muted);
+}
+
+.welcome-capabilities__list li svg {
+  flex-shrink: 0;
+  color: var(--color-accent-glint);
+}
+
+/* Trust footer ------------------------------------------------------------ */
+.welcome-trust {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 24px 52px;
+}
+
+.welcome-trust svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--color-success);
+}
+
+.welcome-trust p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--color-text-muted);
+}
+
+/* ==========================================================================
+   Responsive — Tablet
+   ========================================================================== */
+@media (max-width: 680px) {
+  .welcome-backdrop {
+    padding: 12px;
+    align-items: flex-end;
+  }
+
+  .welcome-dialog {
+    max-width: 100%;
+    max-height: calc(96dvh - 12px);
+    border-bottom-left-radius: var(--radius-sm);
+    border-bottom-right-radius: var(--radius-sm);
+  }
+
+  .welcome-scroll {
+    max-height: calc(96dvh - 12px);
+  }
+
+  .welcome-hero {
+    padding: 44px 28px 32px;
+  }
+
+  .welcome-headline {
+    font-size: 1.65rem;
+  }
+
+  .welcome-studios {
+    padding: 28px 28px;
+  }
+
+  .welcome-studios__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .welcome-capabilities {
+    padding: 28px 28px;
+  }
+
+  .welcome-capabilities__list {
+    grid-template-columns: 1fr;
+  }
+
+  .welcome-trust {
+    padding: 20px 28px;
+  }
+
+  .welcome-privacy__badge {
+    flex: 1 1 120px;
+    padding: 12px 16px;
+  }
+}
+
+/* ==========================================================================
+   Reduced motion
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .welcome-backdrop {
+    animation: none;
+  }
+
+  .welcome-dialog {
+    animation: none;
+  }
+
+  .welcome-scroll {
+    scroll-behavior: auto;
+  }
+
+  .welcome-studio-card,
+  .welcome-studio-card__arrow,
+  .welcome-close {
+    transition: none;
+  }
+}
+
+/* Also respect the in-app reduced-motion preference from preferences store */
+:root[data-motion='reduce'] .welcome-backdrop,
+:root[data-motion='reduce'] .welcome-dialog {
+  animation: none;
+}
+
+:root[data-motion='reduce'] .welcome-studio-card,
+:root[data-motion='reduce'] .welcome-studio-card__arrow,
+:root[data-motion='reduce'] .welcome-close {
+  transition: none;
+}
+
+/* Settings reopen button */
+.settings-about {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-about small {
+  color: var(--color-text-muted);
+  font-size: 12.5px;
+}
+
+.settings-welcome-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+}

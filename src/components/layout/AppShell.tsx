@@ -1,19 +1,40 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { AppHeader } from './AppHeader';
 import { CommandPalette } from './CommandPalette';
 import { MobileNavigation } from './MobileNavigation';
 import { Sidebar } from './Sidebar';
 import { StatusBar } from './StatusBar';
+import { hasSeenWelcome, markWelcomeSeen } from '../../features/welcome/welcomePreference';
+
+const WelcomeDialog = lazy(() =>
+  import('../../features/welcome/WelcomeDialog').then((m) => ({ default: m.WelcomeDialog }))
+);
 
 export function AppShell() {
   const [commandOpen, setCommandOpen] = useState(false);
   const [navigationOpen, setNavigationOpen] = useState(false);
+  // Lazy initializer: read localStorage once on mount, not in an effect
+  const [welcomeOpen, setWelcomeOpen] = useState(() => !hasSeenWelcome());
   const chooseInputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
 
   const closeCommand = useCallback(() => setCommandOpen(false), []);
   const closeNavigation = useCallback(() => setNavigationOpen(false), []);
+
+  const handleWelcomeClose = useCallback(() => {
+    markWelcomeSeen();
+    setWelcomeOpen(false);
+  }, []);
+
+  // Allow reopening from Settings via a custom event
+  useEffect(() => {
+    const handler = () => {
+      setWelcomeOpen(true);
+    };
+    window.addEventListener('pixavelo:show-welcome', handler);
+    return () => window.removeEventListener('pixavelo:show-welcome', handler);
+  }, []);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -62,6 +83,9 @@ export function AppShell() {
         onMore={() => setNavigationOpen(true)}
       />
       <CommandPalette open={commandOpen} onClose={closeCommand} />
+      <Suspense fallback={null}>
+        <WelcomeDialog open={welcomeOpen} onClose={handleWelcomeClose} />
+      </Suspense>
     </div>
   );
 }

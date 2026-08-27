@@ -1,5 +1,6 @@
-import { MonitorCog } from 'lucide-react';
+import { BookOpen, MonitorCog } from 'lucide-react';
 import { usePreferences, type ThemePreference } from '../../stores/preferences';
+import { resetWelcome } from '../welcome/welcomePreference';
 
 const themeOptions: readonly { readonly value: ThemePreference; readonly label: string }[] = [
   { value: 'system', label: 'Use system setting' },
@@ -65,6 +66,24 @@ export default function SettingsPage() {
               <small>Off by default. Image binaries are never stored in recent job history.</small>
             </span>
           </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>About</legend>
+          <div className="settings-about">
+            <button
+              type="button"
+              className="button button--secondary settings-welcome-btn"
+              onClick={() => {
+                resetWelcome();
+                window.dispatchEvent(new CustomEvent('pixavelo:show-welcome'));
+              }}
+            >
+              <BookOpen size={16} aria-hidden="true" />
+              Reopen welcome guide
+            </button>
+            <small>Shows the product overview and studio navigation guide.</small>
+          </div>
         </fieldset>
       </form>
     </article>
