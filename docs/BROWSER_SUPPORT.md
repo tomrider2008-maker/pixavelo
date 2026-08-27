@@ -35,6 +35,10 @@ boundary is unavailable.
 - Editor previews are canvas renders from retained source pixels. They may be resolution-capped for responsive
   interaction, but the explicit export always applies the recipe to the original decoded dimensions through the
   verified pipeline. Browser-native encoder differences therefore affect only the final encoded file.
+- Remove & Heal and Background Cutout use deterministic Canvas pixel operations on-device, not AI segmentation.
+  Full-resolution pixel editing is capped at 13 million output pixels to bound browser memory; larger sources remain
+  available to the other Editor tools and can be resized before retouching. JPEG cannot carry transparency, so a
+  transparent cutout defaults to PNG and maps to the selected solid background if JPEG is chosen later.
 - Native lossy encoders vary slightly by browser. Target-size mode measures the encoder available on the current
   device, caps total work at 12 passes (including at most three dimension fallbacks), and explicitly reports when
   configured quality and dimension floors cannot meet a very small target.

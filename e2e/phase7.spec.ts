@@ -1,4 +1,6 @@
+import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 
 test.setTimeout(90_000);
 
@@ -25,6 +27,57 @@ async function makePng(page: Page, width = 48, height = 32) {
     { imageWidth: width, imageHeight: height }
   );
   return Buffer.from(bytes);
+}
+
+async function makeRetouchPng(page: Page, width = 120, height = 120) {
+  const bytes = await page.evaluate(
+    async ({ imageWidth, imageHeight }) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = imageWidth;
+      canvas.height = imageHeight;
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('Canvas unavailable.');
+      context.fillStyle = '#1c5fd4';
+      context.fillRect(0, 0, imageWidth, imageHeight);
+      context.fillStyle = '#ef3340';
+      context.fillRect(
+        imageWidth * 0.42,
+        imageHeight * 0.42,
+        imageWidth * 0.16,
+        imageHeight * 0.16
+      );
+      const blob = await new Promise<Blob>((resolve, reject) =>
+        canvas.toBlob(
+          (output) => (output ? resolve(output) : reject(new Error('PNG encode failed.'))),
+          'image/png'
+        )
+      );
+      return [...new Uint8Array(await blob.arrayBuffer())];
+    },
+    { imageWidth: width, imageHeight: height }
+  );
+  return Buffer.from(bytes);
+}
+
+async function downloadedPixels(page: Page, path: string) {
+  const bytes = [...(await readFile(path))];
+  return page.evaluate(async (source) => {
+    const bitmap = await createImageBitmap(
+      new Blob([Uint8Array.from(source)], { type: 'image/png' })
+    );
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Canvas unavailable.');
+    context.drawImage(bitmap, 0, 0);
+    bitmap.close();
+    const read = (x: number, y: number) => [...context.getImageData(x, y, 1, 1).data];
+    return {
+      corner: read(1, 1),
+      center: read(Math.floor(canvas.width / 2), Math.floor(canvas.height / 2))
+    };
+  }, bytes);
 }
 
 test('Phase 7 editor keeps preview edits non-destructive until verified export', async ({
@@ -165,3 +218,98 @@ test('Premium editor analysis, looks and production presets remain local and rev
   await expect(page.locator('.editor-history-panel')).toContainText('Portrait canvas');
   expect(nonGetRequests).toEqual([]);
 });
+
+test('Remove and Heal reconstructs painted pixels locally in the downloaded image', async ({
+  page
+}) => {
+  const requests: { method: string; url: string }[] = [];
+  page.on('request', (request) => requests.push({ method: request.method(), url: request.url() }));
+  await page.goto('/edit');
+  await page.locator('[data-image-input]').setInputFiles({
+    name: 'local-heal.png',
+    mimeType: 'image/png',
+    buffer: await makeRetouchPng(page)
+  });
+
+  await page
+    .getByRole('navigation', { name: 'Editor tools' })
+    .getByRole('button', { name: 'Remove' })
+    .click();
+  await page.getByLabel('Brush').fill('24');
+  const overlay = page.getByRole('application', { name: 'Remove and heal image canvas' });
+  const bounds = await overlay.boundingBox();
+  if (!bounds) throw new Error('Remove overlay geometry was unavailable.');
+  await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(bounds.x + bounds.width / 2 + 2, bounds.y + bounds.height / 2 + 2);
+  await page.mouse.up();
+
+  await expect(page.getByText('1 pending')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Apply edits first' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Apply removal' }).click();
+  await page.getByRole('combobox', { name: 'Format' }).selectOption('png');
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export image' }).click();
+  const download = await downloadPromise;
+  const path = await download.path();
+  if (!path) throw new Error('Downloaded heal output was unavailable.');
+  const pixels = await downloadedPixels(page, path);
+  expect(pixels.center[0]).toBeLessThan(100);
+  expect(pixels.center[2]).toBeGreaterThan(120);
+  assertLocalRequests(requests, page.url());
+});
+
+test('Background Cutout creates a real transparent PNG without AI or uploads', async ({ page }) => {
+  const requests: { method: string; url: string }[] = [];
+  page.on('request', (request) => requests.push({ method: request.method(), url: request.url() }));
+  await page.goto('/edit');
+  await page.locator('[data-image-input]').setInputFiles({
+    name: 'local-cutout.png',
+    mimeType: 'image/png',
+    buffer: await makeRetouchPng(page)
+  });
+
+  await page
+    .getByRole('navigation', { name: 'Editor tools' })
+    .getByRole('button', { name: 'Cutout' })
+    .click();
+  const accessibility = await new AxeBuilder({ page })
+    .include('.editor-page')
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+    .analyze();
+  expect(
+    accessibility.violations,
+    accessibility.violations.map(({ id, help }) => `${id}: ${help}`).join('\n')
+  ).toEqual([]);
+  const overlay = page.getByRole('application', { name: 'Background cutout image canvas' });
+  await overlay.focus();
+  await overlay.press('Home');
+  await overlay.press('Enter');
+
+  await expect(page.getByText('1 pending')).toBeVisible();
+  await page.getByRole('button', { name: 'Apply cutout' }).click();
+  await expect(page.getByRole('combobox', { name: 'Format' })).toHaveValue('png');
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export image' }).click();
+  const download = await downloadPromise;
+  const path = await download.path();
+  if (!path) throw new Error('Downloaded cutout output was unavailable.');
+  const pixels = await downloadedPixels(page, path);
+  expect(pixels.corner[3]).toBe(0);
+  expect(pixels.center[3]).toBeGreaterThan(240);
+  assertLocalRequests(requests, page.url());
+});
+
+function assertLocalRequests(
+  requests: readonly { method: string; url: string }[],
+  currentUrl: string
+) {
+  const origin = new URL(currentUrl).origin;
+  expect(requests.filter(({ method }) => method !== 'GET' && method !== 'HEAD')).toEqual([]);
+  expect(
+    requests
+      .map(({ url }) => new URL(url))
+      .filter(({ protocol }) => protocol === 'http:' || protocol === 'https:')
+      .every((url) => url.origin === origin)
+  ).toBe(true);
+}

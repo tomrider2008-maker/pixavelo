@@ -150,6 +150,7 @@ export default defineConfig({
         'src/engine/pipeline/encodeToTarget.ts',
         'src/engine/pipeline/geometry.ts',
         'src/engine/pipeline/imageAdjustments.ts',
+        'src/engine/pipeline/applyPixelEdits.ts',
         'src/engine/registry/**/*.ts',
         'src/engine/validation/**/*.ts',
         'src/features/intake/analyzeIntakeSelection.ts',

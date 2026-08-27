@@ -17,6 +17,7 @@ import { stripOutputMetadata } from '../engine/validation/stripOutputMetadata';
 import type { ImageFormat } from '../types/images';
 import { drawTextWatermark } from '../engine/pipeline/drawWatermark';
 import { applyImageAdjustments, buildCanvasFilter } from '../engine/pipeline/imageAdjustments';
+import { applyPixelEdits } from '../engine/pipeline/applyPixelEdits';
 
 const workerScope = self as unknown as DedicatedWorkerGlobalScope;
 const cancelledJobs = new Set<string>();
@@ -85,6 +86,13 @@ async function processImage(request: ProcessRequest) {
     );
     context.restore();
     applyImageAdjustments(context, width, height, request.options.adjustments);
+    applyPixelEdits(
+      context,
+      width,
+      height,
+      request.options.pixelOperations,
+      request.options.cutout
+    );
     drawTextWatermark(context, width, height, request.options.watermark);
     sourceBitmap?.close();
     sourceBitmap = undefined;

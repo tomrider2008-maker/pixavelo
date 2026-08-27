@@ -15,6 +15,8 @@ import { fitCropToAspect } from '../resize/cropMath';
 import type { EditorHistoryState } from './history';
 import type { EditorImageAnalysis } from './imageAnalysis';
 import { activeEditorLook, EDITOR_LOOKS } from './looks';
+import { PixelEditInspector } from './PixelEditInspector';
+import type { EditorCutoutToolState, EditorRemoveToolState } from './pixelToolState';
 import type { EditorExportSettings, EditorRecipe, EditorTool } from './types';
 
 interface EditorInspectorProps {
@@ -25,6 +27,11 @@ interface EditorInspectorProps {
   readonly output: EditorExportSettings;
   readonly outputWidth: number;
   readonly outputHeight: number;
+  readonly removeTool: EditorRemoveToolState;
+  readonly cutoutTool: EditorCutoutToolState;
+  readonly pendingPixelCount: number;
+  readonly pixelSettingsDirty: boolean;
+  readonly pixelEditingSupported: boolean;
   readonly onPanel: (panel: 'adjust' | 'history') => void;
   readonly onApply: (recipe: EditorRecipe, label: string, group?: string) => void;
   readonly onOutput: (output: EditorExportSettings) => void;
@@ -32,6 +39,11 @@ interface EditorInspectorProps {
   readonly onRedo: () => void;
   readonly onResetTool: () => void;
   readonly onRestoreOriginal: () => void;
+  readonly onRemoveTool: (state: EditorRemoveToolState) => void;
+  readonly onCutoutTool: (state: EditorCutoutToolState) => void;
+  readonly onUndoPendingPixel: () => void;
+  readonly onClearPendingPixel: () => void;
+  readonly onApplyPendingPixel: () => void;
 }
 
 const LIGHT_KEYS = ['exposure', 'brightness', 'contrast', 'highlights', 'shadows'] as const;
@@ -46,15 +58,27 @@ export function EditorInspector({
   output,
   outputWidth,
   outputHeight,
+  removeTool,
+  cutoutTool,
+  pendingPixelCount,
+  pixelSettingsDirty,
+  pixelEditingSupported,
   onPanel,
   onApply,
   onOutput,
   onUndo,
   onRedo,
   onResetTool,
-  onRestoreOriginal
+  onRestoreOriginal,
+  onRemoveTool,
+  onCutoutTool,
+  onUndoPendingPixel,
+  onClearPendingPixel,
+  onApplyPendingPixel
 }: EditorInspectorProps) {
   const recipe = history.present;
+  const pixelTool = activeTool === 'remove' || activeTool === 'cutout';
+  const [desktopInspector] = useState(() => window.innerWidth > 860);
 
   return (
     <aside className="editor-inspector" aria-label="Editor controls">
@@ -65,7 +89,7 @@ export function EditorInspector({
           aria-selected={panel === 'adjust'}
           onClick={() => onPanel('adjust')}
         >
-          Adjust
+          {pixelTool ? 'Tool' : 'Adjust'}
         </button>
         <button
           type="button"
@@ -82,8 +106,25 @@ export function EditorInspector({
           <HistoryPanel history={history} onUndo={onUndo} onRedo={onRedo} />
         ) : (
           <>
-            <StudioIntelligence recipe={recipe} analysis={analysis} onApply={onApply} />
-            {activeTool === 'looks' ? null : activeTool === 'crop' ? (
+            {pixelTool ? (
+              <PixelEditInspector
+                activeTool={activeTool}
+                remove={removeTool}
+                cutout={cutoutTool}
+                pendingCount={pendingPixelCount}
+                dirty={pixelSettingsDirty}
+                supported={pixelEditingSupported}
+                showApply={!desktopInspector}
+                onRemove={onRemoveTool}
+                onCutout={onCutoutTool}
+                onUndoPending={onUndoPendingPixel}
+                onClearPending={onClearPendingPixel}
+                onApplyPending={onApplyPendingPixel}
+              />
+            ) : (
+              <StudioIntelligence recipe={recipe} analysis={analysis} onApply={onApply} />
+            )}
+            {pixelTool || activeTool === 'looks' ? null : activeTool === 'crop' ? (
               <CropControls
                 recipe={recipe}
                 sourceWidth={history.original.canvas.width}
@@ -164,8 +205,19 @@ export function EditorInspector({
       </div>
 
       <footer className="editor-inspector__footer">
+        {pixelTool && desktopInspector && panel === 'adjust' ? (
+          <button
+            className="button button--primary"
+            style={{ gridColumn: '1 / -1' }}
+            type="button"
+            disabled={!pixelEditingSupported || (pendingPixelCount === 0 && !pixelSettingsDirty)}
+            onClick={onApplyPendingPixel}
+          >
+            <Check size={16} /> Apply {activeTool === 'cutout' ? 'cutout' : 'removal'}
+          </button>
+        ) : null}
         <button className="button button--secondary" type="button" onClick={onResetTool}>
-          Reset adjustment
+          Reset tool
         </button>
         <button className="button button--secondary" type="button" onClick={onRestoreOriginal}>
           Restore original
