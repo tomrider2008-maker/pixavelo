@@ -63,8 +63,8 @@ The report requires an endpoint gap no larger than 90 minutes and a privacy-evid
 the entire requested window. It reports sampled availability separately from conservative unavailable hours, verifies
 every observation hash, and lists all observed deployment revisions.
 
-Current status on 2026-08-25: the durable local baseline plus successful manual GitHub run `32879256015` aggregate to
-seven verified observations. Two endpoint observations passed availability, release integrity and the five-second
-latency guardrail; one Chromium browser observation passed privacy. No objective failure was present. The hourly and
-daily schedules have not yet produced an actual `schedule` event record, and the 30-day window is explicitly
-incomplete.
+Current status on 2026-08-27: actual schedule events exist from 2026-08-25 onward. Several scheduled runs failed on
+2026-08-26, and the subsequently observed endpoint sequence exceeded the 90-minute maximum gap. The scheduled
+artifacts are valid point-in-time evidence, but the continuity requirements are not met and the 30-day window is
+explicitly unclaimable. A new window can begin only after the latest failure or excessive gap, and any later privacy,
+release-integrity or continuity miss restarts the claim.
