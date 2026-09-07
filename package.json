@@ -42,10 +42,10 @@
   "dependencies": {
     "@discourse/heic": "^1.0.0",
     "@jsquash/avif": "^2.1.1",
-    "lucide-react": "^1.33.0",
+    "lucide-react": "^1.40.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-router-dom": "^7.18.2",
+    "react-router-dom": "^7.18.3",
     "utif": "^3.1.0"
   },
   "devDependencies": {
